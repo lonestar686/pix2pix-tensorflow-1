@@ -10,9 +10,11 @@ import tensorflow as tf
 EPS = 1e-12
 CROP_SIZE = 256
 SCALE_SIZE = 286
+NUM_PARALLELS = 8
+
 #
 Examples = collections.namedtuple("Examples", "paths, inputs, targets, count, steps_per_epoch")
-os.environ["CUDA_VISIBLE_DEVICES"]="0"
+
 #
 def preprocess(image):
     with tf.name_scope("preprocess"):
@@ -171,17 +173,17 @@ def load_batch_examples(a):
         dataset = tf.data.Dataset.from_tensor_slices(input_paths)
 
         # Make a Dataset of image tensors by reading and decoding the files.
-        dataset = dataset.map(lambda x: load_one_example(decode, x, a.lab_colorization), num_parallel_calls=None)
+        dataset = dataset.map(lambda x: load_one_example(decode, x, a.lab_colorization), num_parallel_calls=NUM_PARALLELS)
 
     # switch direction
-    dataset = dataset.map(lambda x1, x2, x3: switch_direction(x1, x2, x3, a.which_direction), num_parallel_calls=None)
+    dataset = dataset.map(lambda x1, x2, x3: switch_direction(x1, x2, x3, a.which_direction), num_parallel_calls=NUM_PARALLELS)
     
     # transform data
-    dataset = dataset.map(transform_pairs, num_parallel_calls=None)
+    dataset = dataset.map(transform_pairs, num_parallel_calls=NUM_PARALLELS)
 
     #paths_batch, inputs_batch, targets_batch = tf.train.batch([paths, input_images, target_images], batch_size=a.batch_size)
-    dataset = dataset.batch(a.batch_size)
- 
+    dataset = dataset.repeat().batch(a.batch_size)
+
     # make an iterator
     iter  = dataset.make_one_shot_iterator()
     paths_batch, inputs_batch, targets_batch = iter.get_next()
@@ -320,6 +322,7 @@ def transform_pairs(filenames, inputs, targets, flip=False, scale_size=SCALE_SIZ
         target_images = transform(targets)
 
     return filenames, input_images, target_images
+
 
 if __name__ == "__main__":
     import argparse
