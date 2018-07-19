@@ -7,7 +7,6 @@ import collections
 import tensorflow as tf
 
 #
-EPS = 1e-12
 CROP_SIZE = 256
 SCALE_SIZE = 286
 NUM_PARALLELS = 8
