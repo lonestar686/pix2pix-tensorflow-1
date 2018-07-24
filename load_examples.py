@@ -6,6 +6,13 @@ import collections
 #
 import tensorflow as tf
 
+__all__ = ['CROP_SIZE']
+
+# decorator for import *
+def export(obj):
+    __all__.append(obj.__name__)
+    return obj
+
 #
 CROP_SIZE = 256
 SCALE_SIZE = 286
@@ -20,7 +27,7 @@ def preprocess(image):
         # [0, 1] => [-1, 1]
         return image * 2 - 1
 
-
+@export
 def deprocess(image):
     with tf.name_scope("deprocess"):
         # [-1, 1] => [0, 1]
@@ -141,6 +148,7 @@ def lab_to_rgb(lab):
         return tf.reshape(srgb_pixels, tf.shape(lab))
 
 #
+@export
 def load_batch_examples(a):
     #
     if a.input_dir is None or not os.path.exists(a.input_dir):
@@ -199,30 +207,6 @@ def load_batch_examples(a):
     )
     
 def load_one_example(decode, filename, lab_colorization):
-    # path_queue = tf.train.string_input_producer(input_paths, shuffle=a.mode == "train")
-    # reader = tf.WholeFileReader()
-    # paths, contents = reader.read(path_queue)
-    # raw_input = decode(contents)
-    # raw_input = tf.image.convert_image_dtype(raw_input, dtype=tf.float32)
-
-    # assertion = tf.assert_equal(tf.shape(raw_input)[2], 3, message="image does not have 3 channels")
-    # with tf.control_dependencies([assertion]):
-    #     raw_input = tf.identity(raw_input)
-
-    # raw_input.set_shape([None, None, 3])
-
-
-    # if a.lab_colorization:
-    #     # load color and brightness from image, no B image exists here
-    #     lab = rgb_to_lab(raw_input)
-    #     L_chan, a_chan, b_chan = preprocess_lab(lab)
-    #     a_images = tf.expand_dims(L_chan, axis=2)
-    #     b_images = tf.stack([a_chan, b_chan], axis=2)
-    # else:
-    #     # break apart image pair and move to range [-1, 1]
-    #     width = tf.shape(raw_input)[1] # [height, width, channels]
-    #     a_images = preprocess(raw_input[:,:width//2,:])
-    #     b_images = preprocess(raw_input[:,width//2:,:]) 
 
     # Make a Dataset of image tensors by reading and decoding the files.
     raw_input = decode(tf.read_file(filename))
@@ -249,12 +233,6 @@ def load_one_example(decode, filename, lab_colorization):
     return filename, a_images, b_images
 
 def switch_direction(filenames, a_images, b_images, which_direction):
-    # if a.which_direction == "AtoB":
-    #     inputs, targets = [a_images, b_images]
-    # elif a.which_direction == "BtoA":
-    #     inputs, targets = [b_images, a_images]
-    # else:
-    #     raise Exception("invalid direction")
 
     #
     if which_direction == "AtoB":
@@ -267,32 +245,6 @@ def switch_direction(filenames, a_images, b_images, which_direction):
     return filenames, inputs, targets
 
 def transform_pairs(filenames, inputs, targets, flip=False, scale_size=SCALE_SIZE, crop_size=CROP_SIZE):
-
-    # # synchronize seed for image operations so that we do the same operations to both
-    # # input and output images
-    # seed = random.randint(0, 2**31 - 1)
-    # def transform(image):
-    #     r = image
-    #     if a.flip:
-    #         r = tf.image.random_flip_left_right(r, seed=seed)
-
-    #     # area produces a nice downscaling, but does nearest neighbor for upscaling
-    #     # assume we're going to be doing downscaling here
-    #     r = tf.image.resize_images(r, [a.scale_size, a.scale_size], method=tf.image.ResizeMethod.AREA)
-
-    #     offset = tf.cast(tf.floor(tf.random_uniform([2], 0, a.scale_size - CROP_SIZE + 1, seed=seed)), dtype=tf.int32)
-    #     if a.scale_size > CROP_SIZE:
-    #         r = tf.image.crop_to_bounding_box(r, offset[0], offset[1], CROP_SIZE, CROP_SIZE)
-    #     elif a.scale_size < CROP_SIZE:
-    #         raise Exception("scale size cannot be less than crop size")
-    #     return r
-
-    # with tf.name_scope("input_images"):
-    #     input_images = transform(inputs)
-
-    # with tf.name_scope("target_images"):
-    #     target_images = transform(targets)
-
 
     # synchronize seed for image operations so that we do the same operations to both
     # input and output images

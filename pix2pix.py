@@ -13,19 +13,15 @@ import random
 import math
 import time
 
-# set up gpus
-os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"]="3"
-
 parser = argparse.ArgumentParser()
-parser.add_argument("--input_dir", help="path to folder containing images")
+parser.add_argument("--input_dir", default='./datasets/facades/train', help="path to folder containing images")
 parser.add_argument("--mode", required=True, choices=["train", "test", "export"])
 parser.add_argument("--output_dir", type=str, default='./facades_train', help="where to put output files")
 parser.add_argument("--seed", type=int)
 parser.add_argument("--checkpoint", default=None, help="directory with checkpoint to resume training from or use for testing")
 
 parser.add_argument("--max_steps", type=int, help="number of training steps (0 to disable)")
-parser.add_argument("--max_epochs", type=int, help="number of training epochs")
+parser.add_argument("--max_epochs", type=int, default=200, help="number of training epochs")
 parser.add_argument("--summary_freq", type=int, default=100, help="update summaries every summary_freq steps")
 parser.add_argument("--progress_freq", type=int, default=50, help="display progress every progress_freq steps")
 parser.add_argument("--trace_freq", type=int, default=0, help="trace execution every trace_freq steps")
@@ -47,6 +43,7 @@ parser.add_argument("--lr", type=float, default=0.0002, help="initial learning r
 parser.add_argument("--beta1", type=float, default=0.5, help="momentum term of adam")
 parser.add_argument("--l1_weight", type=float, default=100.0, help="weight on L1 term for generator gradient")
 parser.add_argument("--gan_weight", type=float, default=1.0, help="weight on GAN term for generator gradient")
+parser.add_argument("--gpu_id", type=int, default=3, help="gpu id to run")
 
 # export options
 parser.add_argument("--output_filetype", default="png", choices=["png", "jpeg"])
@@ -56,63 +53,12 @@ a = parser.parse_args()
 from load_examples import *
 # load model
 from model import *
+# load utilities
+from utils import *
 
-
-def augment(image, brightness):
-    # (a, b) color channels, combine with L channel and convert to rgb
-    a_chan, b_chan = tf.unstack(image, axis=3)
-    L_chan = tf.squeeze(brightness, axis=3)
-    lab = deprocess_lab(L_chan, a_chan, b_chan)
-    rgb = lab_to_rgb(lab)
-    return rgb
-
-
-def save_images(fetches, step=None):
-    image_dir = os.path.join(a.output_dir, "images")
-    if not os.path.exists(image_dir):
-        os.makedirs(image_dir)
-
-    filesets = []
-    for i, in_path in enumerate(fetches["paths"]):
-        name, _ = os.path.splitext(os.path.basename(in_path.decode("utf8")))
-        fileset = {"name": name, "step": step}
-        for kind in ["inputs", "outputs", "targets"]:
-            filename = name + "-" + kind + ".png"
-            if step is not None:
-                filename = "%08d-%s" % (step, filename)
-            fileset[kind] = filename
-            out_path = os.path.join(image_dir, filename)
-            contents = fetches[kind][i]
-            with open(out_path, "wb") as f:
-                f.write(contents)
-        filesets.append(fileset)
-    return filesets
-
-
-def append_index(filesets, step=False):
-    index_path = os.path.join(a.output_dir, "index.html")
-    if os.path.exists(index_path):
-        index = open(index_path, "a")
-    else:
-        index = open(index_path, "w")
-        index.write("<html><body><table><tr>")
-        if step:
-            index.write("<th>step</th>")
-        index.write("<th>name</th><th>input</th><th>output</th><th>target</th></tr>")
-
-    for fileset in filesets:
-        index.write("<tr>")
-
-        if step:
-            index.write("<td>%d</td>" % fileset["step"])
-        index.write("<td>%s</td>" % fileset["name"])
-
-        for kind in ["inputs", "outputs", "targets"]:
-            index.write("<td><img src='images/%s'></td>" % fileset[kind])
-
-        index.write("</tr>")
-    return index_path
-
+# set up gpus
+os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
+os.environ["CUDA_VISIBLE_DEVICES"]=str(a.gpu_id)
 
 def main():
     if a.seed is None:
