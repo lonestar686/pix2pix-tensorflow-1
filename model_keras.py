@@ -61,6 +61,8 @@ class pix2pix:
     def create_generator(self, generator_inputs, generator_outputs_channels):
         layers = []
 
+        input = tf.keras.layers.Input(generator_inputs)
+        
         # encoder_1: [batch, 256, 256, in_channels] => [batch, 128, 128, ngf]
         with tf.variable_scope("encoder_1"):
             output = gen_conv(generator_inputs, self.a.ngf)
@@ -130,7 +132,8 @@ class pix2pix:
         layers = []
 
         # 2x [batch, height, width, in_channels] => [batch, height, width, in_channels * 2]
-        input = tf.keras.layers.Concatenate(axis=-1)([discrim_inputs, discrim_targets])
+        input = tf.concat([discrim_inputs, discrim_targets], axis=-1)
+        input = tf.keras.layers.Input(input)
 
         # layer_1: [batch, 256, 256, in_channels * 2] => [batch, 128, 128, ndf]
         with tf.variable_scope("layer_1"):
@@ -164,18 +167,23 @@ class pix2pix:
         with tf.variable_scope("generator"):
             out_channels = int(targets.get_shape()[-1])
             outputs = self.create_generator(inputs, out_channels)
+            ii = tf.keras.Input(inputs)
+            model0 = tf.keras.models.Model(ii, outputs)
+            model0.summary()
 
         # create two copies of discriminator, one for real pairs and one for fake pairs
         # they share the same underlying variables
-        with tf.name_scope("real_discriminator"):
-            with tf.variable_scope("discriminator"):
-                # 2x [batch, height, width, channels] => [batch, 30, 30, 1]
-                predict_real = self.create_discriminator(inputs, targets)
+        #with tf.name_scope("real_discriminator"):
+        with tf.variable_scope("discriminator"):
+            # 2x [batch, height, width, channels] => [batch, 30, 30, 1]
+            predict_real = self.create_discriminator(inputs, targets)
+            model1 = tf.keras.models.Model(ii, predict_real)
+            model1.summary()
 
-        with tf.name_scope("fake_discriminator"):
-            with tf.variable_scope("discriminator", reuse=True):
-                # 2x [batch, height, width, channels] => [batch, 30, 30, 1]
-                predict_fake = self.create_discriminator(inputs, outputs)
+        #with tf.name_scope("fake_discriminator"):
+        with tf.variable_scope("discriminator", reuse=True):
+            # 2x [batch, height, width, channels] => [batch, 30, 30, 1]
+            predict_fake = self.create_discriminator(inputs, outputs)
 
         with tf.name_scope("discriminator_loss"):
             # minimizing -tf.log will try to get inputs to 1
@@ -192,6 +200,7 @@ class pix2pix:
 
         with tf.name_scope("discriminator_train"):
             discrim_tvars = [var for var in tf.trainable_variables() if var.name.startswith("discriminator")]
+            print(discrim_tvars)
             discrim_optim = tf.train.AdamOptimizer(self.a.lr, self.a.beta1)
             discrim_grads_and_vars = discrim_optim.compute_gradients(discrim_loss, var_list=discrim_tvars)
             discrim_train = discrim_optim.apply_gradients(discrim_grads_and_vars)

@@ -2,6 +2,8 @@
 import os
 import tensorflow as tf
 
+from load_examples import deprocess_lab, lab_to_rgb
+
 __all__ = []
 
 # decorator for import *
