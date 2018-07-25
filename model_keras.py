@@ -22,6 +22,34 @@ def lrelu(x, a=0.3):
 def batchnorm(inputs):
     return tf.keras.layers.BatchNormalization(axis=-1, momentum=0.99, epsilon=0.001, center=True, scale=True)(inputs)
 
+def discrim_conv(batch_input, out_channels, stride):
+    conv=tf.keras.layers.Conv2D(out_channels, kernel_size=4, strides=(stride, stride), padding='same', use_bias=True, kernel_initializer='glorot_uniform')
+    return conv(batch_input)
+
+def gen_conv(batch_input, out_channels):
+    # [batch, in_height, in_width, in_channels] => [batch, out_height, out_width, out_channels]
+    conv=tf.keras.layers.Conv2D(out_channels, kernel_size=4, strides=(2, 2), padding='same', use_bias=True, kernel_initializer='glorot_uniform')
+    return conv(batch_input)
+
+
+def gen_deconv(batch_input, out_channels):
+    # [batch, in_height, in_width, in_channels] => [batch, out_height, out_width, out_channels]
+    conv_trans = tf.keras.layers.Conv2DTranspose(out_channels, kernel_size=4, strides=(2, 2), padding='same', kernel_initializer='glorot_uniform')
+    return conv_trans(batch_input)
+
+    # separable_conv:
+def gen_conv_sep(batch_input, out_channels):
+    # [batch, in_height, in_width, in_channels] => [batch, out_height, out_width, out_channels]
+    conv=tf.keras.layers.SeparableConv2D(out_channels, kernel_size=4, strides=(2,2), padding='same')
+    return conv(batch_input)
+
+    # separable_conv:
+def gen_deconv_sep(batch_input, out_channels):
+    # [batch, in_height, in_width, in_channels] => [batch, out_height, out_width, out_channels]
+    up = tf.keras.layers.UpSampling2D(size=(2, 2), data_format=None)(batch_input)
+    conv=tf.keras.layers.SeparableConv2D(out_channels, kernel_size=4, strides=(1,1), padding='same')
+    return conv(up)
+
 @export
 class pix2pix:
     """ to build pix2pix model
@@ -29,37 +57,13 @@ class pix2pix:
     def __init__(self, a):
         self.a  = a 
 
-    def discrim_conv(self, batch_input, out_channels, stride):
-        conv=tf.keras.layers.Conv2D(out_channels, kernel_size=4, strides=(stride, stride), padding='same', use_bias=True, kernel_initializer='glorot_uniform')
-        return conv(batch_input)
-
-
-    def gen_conv(self, batch_input, out_channels):
-        # [batch, in_height, in_width, in_channels] => [batch, out_height, out_width, out_channels]
-        if self.a.separable_conv:
-            conv=tf.keras.layers.SeparableConv2D(out_channels, kernel_size=4, strides=(2,2), padding='same')
-            return conv(batch_input)
-        else:
-            conv=tf.keras.layers.Conv2D(out_channels, kernel_size=4, strides=(2, 2), padding='same', use_bias=True, kernel_initializer='glorot_uniform')
-            return conv(batch_input)
-
-
-    def gen_deconv(self, batch_input, out_channels):
-        # [batch, in_height, in_width, in_channels] => [batch, out_height, out_width, out_channels]
-        if self.a.separable_conv:
-            up = tf.keras.layers.UpSampling2D(size=(2, 2), data_format=None)(batch_input)
-            conv=tf.keras.layers.SeparableConv2D(out_channels, kernel_size=4, strides=(1,1), padding='same')
-            return conv(up)
-        else:
-            conv_trans = tf.keras.layers.Conv2DTranspose(out_channels, kernel_size=4, strides=(2, 2), padding='same', kernel_initializer='glorot_uniform')
-            return conv_trans(batch_input)
 
     def create_generator(self, generator_inputs, generator_outputs_channels):
         layers = []
 
         # encoder_1: [batch, 256, 256, in_channels] => [batch, 128, 128, ngf]
         with tf.variable_scope("encoder_1"):
-            output = self.gen_conv(generator_inputs, self.a.ngf)
+            output = gen_conv(generator_inputs, self.a.ngf)
             layers.append(output)
 
         layer_specs = [
@@ -76,7 +80,7 @@ class pix2pix:
             with tf.variable_scope("encoder_%d" % (len(layers) + 1)):
                 rectified = lrelu(layers[-1], 0.2)
                 # [batch, in_height, in_width, in_channels] => [batch, in_height/2, in_width/2, out_channels]
-                convolved = self.gen_conv(rectified, out_channels)
+                convolved = gen_conv(rectified, out_channels)
                 output = batchnorm(convolved)
                 layers.append(output)
 
@@ -99,63 +103,64 @@ class pix2pix:
                     # since it is directly connected to the skip_layer
                     input = layers[-1]
                 else:
-                    input = tf.keras.layers.Concatenate(axis=-1)([layers[-1], layers[skip_layer])
+                    input = tf.keras.layers.Concatenate(axis=-1)([layers[-1], layers[skip_layer]])
 
                 rectified = tf.keras.activations.relu(input, alpha=0.0, max_value=None)
                 # [batch, in_height, in_width, in_channels] => [batch, in_height*2, in_width*2, out_channels]
-                output = self.gen_deconv(rectified, out_channels)
+                output = gen_deconv(rectified, out_channels)
                 output = batchnorm(output)
 
                 if dropout > 0.0:
-                    tf.keras.layers.Dropout(dropout, noise_shape=None, seed=None)(output)
+                    tf.keras.layers.Dropout(dropout)(output)
 
                 layers.append(output)
 
         # decoder_1: [batch, 128, 128, ngf * 2] => [batch, 256, 256, generator_outputs_channels]
         with tf.variable_scope("decoder_1"):
             input = tf.keras.layers.Concatenate(axis=-1)([layers[-1], layers[0]])
-            rectified = tf.keras.activations.relu(input, alpha=0.0, max_value=None)
-            output = self.gen_deconv(rectified, generator_outputs_channels)
+            rectified = tf.keras.activations.relu(input)
+            output = gen_deconv(rectified, generator_outputs_channels)
             output = tf.keras.activations.tanh(output)
             layers.append(output)
 
         return layers[-1]
 
+    def create_discriminator(self, discrim_inputs, discrim_targets):
+        n_layers = 3
+        layers = []
 
-    def create_model(self, inputs, targets):
-        def create_discriminator(discrim_inputs, discrim_targets):
-            n_layers = 3
-            layers = []
+        # 2x [batch, height, width, in_channels] => [batch, height, width, in_channels * 2]
+        input = tf.keras.layers.Concatenate(axis=-1)([discrim_inputs, discrim_targets])
 
-            # 2x [batch, height, width, in_channels] => [batch, height, width, in_channels * 2]
-            input = tf.concat([discrim_inputs, discrim_targets], axis=3)
+        # layer_1: [batch, 256, 256, in_channels * 2] => [batch, 128, 128, ndf]
+        with tf.variable_scope("layer_1"):
+            convolved = discrim_conv(input, self.a.ndf, stride=2)
+            rectified = lrelu(convolved, 0.2)
+            layers.append(rectified)
 
-            # layer_1: [batch, 256, 256, in_channels * 2] => [batch, 128, 128, ndf]
-            with tf.variable_scope("layer_1"):
-                convolved = self.discrim_conv(input, self.a.ndf, stride=2)
-                rectified = lrelu(convolved, 0.2)
+        # layer_2: [batch, 128, 128, ndf] => [batch, 64, 64, ndf * 2]
+        # layer_3: [batch, 64, 64, ndf * 2] => [batch, 32, 32, ndf * 4]
+        # layer_4: [batch, 32, 32, ndf * 4] => [batch, 31, 31, ndf * 8]
+        for i in range(n_layers):
+            with tf.variable_scope("layer_%d" % (len(layers) + 1)):
+                out_channels = self.a.ndf * min(2**(i+1), 8)
+                stride = 1 if i == n_layers - 1 else 2  # last layer here has stride 1
+                convolved = discrim_conv(layers[-1], out_channels, stride=stride)
+                normalized = batchnorm(convolved)
+                rectified = lrelu(normalized, 0.2)
                 layers.append(rectified)
 
-            # layer_2: [batch, 128, 128, ndf] => [batch, 64, 64, ndf * 2]
-            # layer_3: [batch, 64, 64, ndf * 2] => [batch, 32, 32, ndf * 4]
-            # layer_4: [batch, 32, 32, ndf * 4] => [batch, 31, 31, ndf * 8]
-            for i in range(n_layers):
-                with tf.variable_scope("layer_%d" % (len(layers) + 1)):
-                    out_channels = self.a.ndf * min(2**(i+1), 8)
-                    stride = 1 if i == n_layers - 1 else 2  # last layer here has stride 1
-                    convolved = self.discrim_conv(layers[-1], out_channels, stride=stride)
-                    normalized = batchnorm(convolved)
-                    rectified = lrelu(normalized, 0.2)
-                    layers.append(rectified)
+        # layer_5: [batch, 31, 31, ndf * 8] => [batch, 30, 30, 1]
+        with tf.variable_scope("layer_%d" % (len(layers) + 1)):
+            convolved = discrim_conv(rectified, out_channels=1, stride=1)
+            output = tf.keras.activations.sigmoid(convolved)
+            layers.append(output)
 
-            # layer_5: [batch, 31, 31, ndf * 8] => [batch, 30, 30, 1]
-            with tf.variable_scope("layer_%d" % (len(layers) + 1)):
-                convolved = self.discrim_conv(rectified, out_channels=1, stride=1)
-                output = tf.keras.activations.sigmoid(convolved)
-                layers.append(output)
+        return layers[-1]
 
-            return layers[-1]
+    def create_model(self, inputs, targets):
 
+        # create generator
         with tf.variable_scope("generator"):
             out_channels = int(targets.get_shape()[-1])
             outputs = self.create_generator(inputs, out_channels)
@@ -165,12 +170,12 @@ class pix2pix:
         with tf.name_scope("real_discriminator"):
             with tf.variable_scope("discriminator"):
                 # 2x [batch, height, width, channels] => [batch, 30, 30, 1]
-                predict_real = create_discriminator(inputs, targets)
+                predict_real = self.create_discriminator(inputs, targets)
 
         with tf.name_scope("fake_discriminator"):
             with tf.variable_scope("discriminator", reuse=True):
                 # 2x [batch, height, width, channels] => [batch, 30, 30, 1]
-                predict_fake = create_discriminator(inputs, outputs)
+                predict_fake = self.create_discriminator(inputs, outputs)
 
         with tf.name_scope("discriminator_loss"):
             # minimizing -tf.log will try to get inputs to 1

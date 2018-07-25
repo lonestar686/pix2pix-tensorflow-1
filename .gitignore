@@ -3,5 +3,5 @@ tags
 test
 models
 .idea
-datasets/
-facades_train/
+/datasets
+/facades_train

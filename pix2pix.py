@@ -52,7 +52,8 @@ a = parser.parse_args()
 # load data
 from load_examples import *
 # load model
-from model import *
+#from model import *
+from model_keras import *
 # load utilities
 from utils import *
 

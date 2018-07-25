@@ -179,6 +179,9 @@ def load_batch_examples(a):
         # the relative image directory.
         dataset = tf.data.Dataset.from_tensor_slices(input_paths)
 
+        if a.mode == 'train':   # shuffle the training data
+            dataset = dataset.shuffle(buffer_size=len(input_paths))
+
         # Make a Dataset of image tensors by reading and decoding the files.
         dataset = dataset.map(lambda x: load_one_example(decode, x, a.lab_colorization), num_parallel_calls=NUM_PARALLELS)
 
@@ -188,8 +191,12 @@ def load_batch_examples(a):
     # transform data
     dataset = dataset.map(transform_pairs, num_parallel_calls=NUM_PARALLELS)
 
+    # repeat forever for training data
+    if a.mode == 'train': 
+        dataset = dataset.repeat()
+    
     #paths_batch, inputs_batch, targets_batch = tf.train.batch([paths, input_images, target_images], batch_size=a.batch_size)
-    dataset = dataset.repeat().batch(a.batch_size)
+    dataset = dataset.batch(a.batch_size)
 
     # make an iterator
     iter  = dataset.make_one_shot_iterator()
