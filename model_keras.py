@@ -30,15 +30,15 @@ class pix2pix:
 
         # create two copies of discriminator, one for real pairs and one for fake pairs
         # they share the same underlying variables
-        with tf.name_scope("real_discriminator"):
-            with tf.variable_scope("var_discriminator"):
-                # 2x [batch, height, width, channels] => [batch, 30, 30, 1]
-                predict_real = create_discriminator(inputs, targets, self.a.ndf)
+        # with tf.name_scope("real_discriminator"):
+        with tf.variable_scope("var_discriminator"):
+            # 2x [batch, height, width, channels] => [batch, 30, 30, 1]
+            predict_real = create_discriminator(inputs, targets, self.a.ndf)
 
-        with tf.name_scope("fake_discriminator"):
-            with tf.variable_scope("var_discriminator", reuse=True):
-                # 2x [batch, height, width, channels] => [batch, 30, 30, 1]
-                predict_fake = create_discriminator(inputs, outputs, self.a.ndf)
+        # with tf.name_scope("fake_discriminator"):
+        with tf.variable_scope("var_discriminator", reuse=True):
+            # 2x [batch, height, width, channels] => [batch, 30, 30, 1]
+            predict_fake = create_discriminator(inputs, outputs, self.a.ndf)
 
         with tf.name_scope("discriminator_loss"):
             # minimizing -tf.log will try to get inputs to 1
@@ -55,6 +55,8 @@ class pix2pix:
 
         with tf.name_scope("discriminator_train"):
             discrim_tvars = [var for var in tf.trainable_variables() if "var_discriminator" in var.name]
+            for i, var in enumerate(discrim_tvars):
+                print("i={}, name={}, shape={}".format(i, var.name, tf.shape(var)))
             discrim_optim = tf.train.AdamOptimizer(self.a.lr, self.a.beta1)
             discrim_grads_and_vars = discrim_optim.compute_gradients(discrim_loss, var_list=discrim_tvars)
             discrim_train = discrim_optim.apply_gradients(discrim_grads_and_vars)
@@ -62,6 +64,9 @@ class pix2pix:
         with tf.name_scope("generator_train"):
             with tf.control_dependencies([discrim_train]):
                 gen_tvars = [var for var in tf.trainable_variables() if "var_generator" in var.name]
+                print("-------------------")
+                for i, var in enumerate(gen_tvars):
+                    print("i={}, name={}, shape={}".format(i, var.name, tf.shape(var)))
                 gen_optim = tf.train.AdamOptimizer(self.a.lr, self.a.beta1)
                 gen_grads_and_vars = gen_optim.compute_gradients(gen_loss, var_list=gen_tvars)
                 gen_train = gen_optim.apply_gradients(gen_grads_and_vars)

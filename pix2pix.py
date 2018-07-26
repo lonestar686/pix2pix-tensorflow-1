@@ -245,6 +245,7 @@ def main():
     logdir = a.output_dir if (a.trace_freq > 0 or a.summary_freq > 0) else None
     sv = tf.train.Supervisor(logdir=logdir, save_summaries_secs=0, saver=None)
     with sv.managed_session(config=config) as sess:
+
         print("parameter_count =", sess.run(parameter_count))
 
         if a.checkpoint is not None:
