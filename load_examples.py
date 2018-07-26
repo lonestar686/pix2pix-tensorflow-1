@@ -212,7 +212,8 @@ def load_batch_examples(a):
         count=len(input_paths),
         steps_per_epoch=steps_per_epoch,
     )
-    
+
+# load one example    
 def load_one_example(decode, filename, lab_colorization):
 
     # Make a Dataset of image tensors by reading and decoding the files.
