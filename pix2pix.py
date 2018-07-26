@@ -115,7 +115,7 @@ def main():
         batch_input = tf.expand_dims(input_image, axis=0)
 
         with tf.variable_scope("generator"):
-            batch_output = deprocess(pix_model.create_generator(preprocess(batch_input), 3))
+            batch_output = deprocess(create_generator(preprocess(batch_input), 3, a.ngf))
 
         output_image = tf.image.convert_image_dtype(batch_output, dtype=tf.uint8)[0]
         if a.output_filetype == "png":

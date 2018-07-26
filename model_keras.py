@@ -132,27 +132,31 @@ def create_generator(generator_inputs, generator_outputs_channels, ngf):
             if decoder_layer == 0:
                 # first decoder layer doesn't have skip connections
                 # since it is directly connected to the skip_layer
-                input = layers[-1]
+                inputs = layers[-1]
             else:
-                input = tf.keras.layers.Concatenate(axis=-1)([layers[-1], layers[skip_layer]])
+                inputs = tf.keras.layers.Concatenate(axis=-1)([layers[-1], layers[skip_layer]])
 
-            rectified = tf.keras.activations.relu(input, alpha=0.0, max_value=None)
+            rectified = tf.keras.layers.Activation('relu')(inputs)
             # [batch, in_height, in_width, in_channels] => [batch, in_height*2, in_width*2, out_channels]
             output = gen_deconv(rectified, out_channels)
             output = batchnorm(output)
 
             if dropout > 0.0:
-                tf.keras.layers.Dropout(dropout)(output)
+                output = tf.keras.layers.Dropout(dropout)(output)
 
             layers.append(output)
 
     # decoder_1: [batch, 128, 128, ngf * 2] => [batch, 256, 256, generator_outputs_channels]
     with tf.variable_scope("decoder_1"):
-        input = tf.keras.layers.Concatenate(axis=-1)([layers[-1], layers[0]])
-        rectified = tf.keras.activations.relu(input)
+        inputs = tf.keras.layers.Concatenate(axis=-1)([layers[-1], layers[0]])
+        rectified = tf.keras.layers.Activation('relu')(inputs)
+        #
         output = gen_deconv(rectified, generator_outputs_channels)
-        output = tf.keras.activations.tanh(output)
+        output = tf.keras.layers.Activation('tanh')(output)
         layers.append(output)
+
+    # model = tf.keras.Model(inputs=input_generator, outputs=output)
+    # model.summary()
 
     return layers[-1]
 
@@ -187,33 +191,38 @@ def create_discriminator(discrim_inputs, discrim_targets, ndf):
     # layer_5: [batch, 31, 31, ndf * 8] => [batch, 30, 30, 1]
     with tf.variable_scope("layer_%d" % (len(layers) + 1)):
         convolved = discrim_conv(rectified, out_channels=1, stride=1)
-        output = tf.keras.activations.sigmoid(convolved)
+        #output = tf.keras.activations.sigmoid(convolved)
+        output = tf.keras.layers.Activation('sigmoid')(convolved)
         layers.append(output)
+
+    # model = tf.keras.Model(inputs=input_discriminator, outputs=layers[-1])
+    # model.summary()
 
     return layers[-1]
 
 # utility functions
 def lrelu(x, a=0.3):
     with tf.name_scope("lrelu"):
-        # this block looks like it has 2 inputs on the graph unless we do this
-        x = tf.identity(x)
         return tf.keras.layers.LeakyReLU(a)(x)
 
-def batchnorm(inputs):
-    return tf.keras.layers.BatchNormalization(axis=-1, momentum=0.99, epsilon=0.001, center=True, scale=True)(inputs)
+def batchnorm(inputs, training=True):
+    return tf.keras.layers.BatchNormalization()(inputs)
 
 def discrim_conv(batch_input, out_channels, stride):
-    conv=tf.keras.layers.Conv2D(out_channels, kernel_size=4, strides=(stride, stride), padding='same', use_bias=True, kernel_initializer='glorot_uniform')
+    initializer = tf.random_normal_initializer(0, 0.02)
+    conv=tf.keras.layers.Conv2D(out_channels, kernel_size=4, strides=(stride, stride), padding='same', kernel_initializer=initializer)
     return conv(batch_input)
 
 def gen_conv(batch_input, out_channels):
+    initializer = tf.random_normal_initializer(0, 0.02)
     # [batch, in_height, in_width, in_channels] => [batch, out_height, out_width, out_channels]
-    conv=tf.keras.layers.Conv2D(out_channels, kernel_size=4, strides=(2, 2), padding='same', use_bias=True, kernel_initializer='glorot_uniform')
+    conv=tf.keras.layers.Conv2D(out_channels, kernel_size=4, strides=(2, 2), padding='same', kernel_initializer=initializer)
     return conv(batch_input)
 
 def gen_deconv(batch_input, out_channels):
+    initializer = tf.random_normal_initializer(0, 0.02)
     # [batch, in_height, in_width, in_channels] => [batch, out_height, out_width, out_channels]
-    conv_trans = tf.keras.layers.Conv2DTranspose(out_channels, kernel_size=4, strides=(2, 2), padding='same', kernel_initializer='glorot_uniform')
+    conv_trans = tf.keras.layers.Conv2DTranspose(out_channels, kernel_size=4, strides=(2, 2), padding='same', kernel_initializer=initializer)
     return conv_trans(batch_input)
 
     # separable_conv:
