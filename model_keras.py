@@ -119,7 +119,7 @@ class Generator:
 
         # apply operators to the data
         in_op = input_generator
-        for op in self.network_:
+        for op in self.networks:
             in_op = op(in_op)
 
         # for qc purpose
