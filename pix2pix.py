@@ -43,7 +43,9 @@ parser.add_argument("--lr", type=float, default=0.0002, help="initial learning r
 parser.add_argument("--beta1", type=float, default=0.5, help="momentum term of adam")
 parser.add_argument("--l1_weight", type=float, default=100.0, help="weight on L1 term for generator gradient")
 parser.add_argument("--gan_weight", type=float, default=1.0, help="weight on GAN term for generator gradient")
+#
 parser.add_argument("--gpu_id", type=int, default=3, help="gpu id to run")
+parser.add_argument("--model", type=str, default='keras', help='network model')
 
 # export options
 parser.add_argument("--output_filetype", default="png", choices=["png", "jpeg"])
@@ -51,11 +53,16 @@ a = parser.parse_args()
 
 # load data
 from load_examples import *
-# load model
-#from model import *
-from model_keras import *
 # load utilities
 from utils import *
+
+# pick a model
+if a.model == 'keras':
+    print(' using keras model')
+    from model_keras import *
+else:
+    print(' using tensorflow model')
+    from model import *
 
 # set up gpus
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
@@ -71,9 +78,6 @@ def main():
 
     if not os.path.exists(a.output_dir):
         os.makedirs(a.output_dir)
-
-    # pix2pix model
-    pix_model = pix2pix(a)
 
     if a.mode == "test" or a.mode == "export":
         if a.checkpoint is None:
@@ -153,8 +157,12 @@ def main():
 
         return
 
+    # prepare dataset
     examples = load_batch_examples(a)
     print("examples count = %d" % examples.count)
+
+    # pix2pix model
+    pix_model = pix2pix(a)
 
     # inputs and targets are [batch_size, height, width, channels]
     model = pix_model.create_model(examples.inputs, examples.targets)
