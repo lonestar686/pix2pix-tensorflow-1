@@ -59,10 +59,10 @@ from utils import *
 # pick a model
 if a.model == 'keras':
     print(' using keras model')
-    from model_keras import *
+    from model_unet_keras import *
 else:
     print(' using tensorflow model')
-    from model import *
+    from model_unet_tf import *
 
 # set up gpus
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
@@ -248,7 +248,7 @@ def main():
 
 	# don't take the whole memory
     config = tf.ConfigProto()
-    config.gpu_options.allow_growth = True
+    config.gpu_options.allow_growth = True   #pylint: disable=E1101
 
     logdir = a.output_dir if (a.trace_freq > 0 or a.summary_freq > 0) else None
     sv = tf.train.Supervisor(logdir=logdir, save_summaries_secs=0, saver=None)
@@ -291,7 +291,7 @@ def main():
                 options = None
                 run_metadata = None
                 if should(a.trace_freq):
-                    options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
+                    options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)  #pylint: disable=E1101
                     run_metadata = tf.RunMetadata()
 
                 fetches = {
