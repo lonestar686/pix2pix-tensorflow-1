@@ -59,10 +59,10 @@ from utils import *
 # pick a model
 if a.model == 'keras':
     print(' using keras model')
-    from model_unet_keras import *
+    from model_keras import *
 else:
     print(' using tensorflow model')
-    from model_unet_tf import *
+    from model_tf import *
 
 # set up gpus
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"

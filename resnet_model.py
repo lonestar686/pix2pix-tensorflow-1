@@ -4,6 +4,8 @@ from network_ops import Conv2d, ConvTranspose2d, BatchNorm2d
 from network_ops import Activation, LeakyReLU, Dropout
 import numpy as np
 
+import tensorflow as tf
+
 # Defines the generator that consists of Resnet blocks between a few
 # downsampling/upsampling operations.
 class ResnetGenerator(Module):
@@ -13,7 +15,7 @@ class ResnetGenerator(Module):
         self.output_nc = output_nc
         self.ngf = ngf
 
-        model = [Conv2d(ngf, kernel_size=7, stride=2),
+        model = [Conv2d(ngf, kernel_size=7, stride=1),
                  BatchNorm2d(),
                  Activation('relu')]
 
@@ -36,13 +38,23 @@ class ResnetGenerator(Module):
                       BatchNorm2d(),
                       Activation('relu')]
 
-        model += [Conv2d(output_nc, kernel_size=7, stride=2)]
+        model += [Conv2d(output_nc, kernel_size=7, stride=1)]
         model += [Activation('tanh')]
 
         self.model = Sequential(*model)
 
     def forward(self, input):
-        return self.model(input)
+
+        # input data
+        input = tf.keras.layers.Input(tensor=input)
+
+        output = self.model(input)
+
+        # # qc 
+        # test_model = tf.keras.models.Model(input, output)
+        # test_model.summary()
+
+        return output
 
 # Define a resnet block
 class ResnetBlock(Module):
@@ -53,26 +65,26 @@ class ResnetBlock(Module):
     def build_conv_block(self, dim, use_dropout):
         conv_block = []
 
-        conv_block += [Conv2d(dim, kernel_size=3, stride=2),
+        conv_block += [Conv2d(dim, kernel_size=3, stride=1),
                        BatchNorm2d(),
                        Activation('relu')]
         if use_dropout:
             conv_block += [Dropout(0.5)]
 
-        conv_block += [Conv2d(dim, kernel_size=3, stride=2),
+        conv_block += [Conv2d(dim, kernel_size=3, stride=1),
                        BatchNorm2d()]
 
         return Sequential(*conv_block)
 
     def forward(self, x):
-        out = x + self.conv_block(x)
+        out = tf.keras.layers.Add()([x, self.conv_block(x)])
         return out
 
 
 # Defines the PatchGAN discriminator.
 class NLayerDiscriminator(Module):
     def __init__(self, ndf=64, n_layers=3, 
-                       use_sigmoid=False):
+                       use_sigmoid=True):
         super(NLayerDiscriminator, self).__init__()
 
         kw = 4
@@ -104,4 +116,12 @@ class NLayerDiscriminator(Module):
         self.model = Sequential(*sequence)
 
     def forward(self, input):
-        return self.model(input)
+        # input data
+        input = tf.keras.layers.Input(tensor=input)
+        output = self.model(input)
+
+        # # qc 
+        # test_model = tf.keras.models.Model(input, output)
+        # test_model.summary()
+
+        return output
