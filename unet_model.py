@@ -42,8 +42,8 @@ class UnetGenerator(Module):
                 x = op(x)
 
         # for qc testing
-        model = tf.keras.models.Model(input_generator, x)
-        model.summary()
+        # model = tf.keras.models.Model(input_generator, x)
+        # model.summary()
 
         return x
 
@@ -132,8 +132,8 @@ class UnetDiscriminator(Module):
         x = self.network(input_discriminator)
 
         # for qc testing
-        model = tf.keras.models.Model(input_discriminator, x)
-        model.summary()
+        # model = tf.keras.models.Model(input_discriminator, x)
+        # model.summary()
 
         return x
 

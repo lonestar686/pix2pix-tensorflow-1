@@ -17,7 +17,7 @@ def dropout(a):
 def concat(axis=-1):
     return tf.keras.layers.Concatenate(axis)
 
-def batchnorm(axis=-1, epsilon=1e-5, momentum=0.1):
+def batchnorm(axis=-1, epsilon=1e-4, momentum=0.99):
     return tf.keras.layers.BatchNormalization(axis, epsilon, momentum)
 
 def conv(out_channels, stride=2, kernel_size=4):
