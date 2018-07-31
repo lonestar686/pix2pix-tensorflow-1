@@ -55,10 +55,6 @@ class pix2pix:
         with tf.name_scope("discriminator_train"):
             #discrim_tvars = [var for var in tf.trainable_variables() if var.name.startswith("discriminator")]
             discrim_tvars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='discriminator')
-            print('--- discriminator ----')
-            for i, var in enumerate(discrim_tvars):
-                print('i={}, var = {}'.format(i, var))
-
             discrim_optim = tf.train.AdamOptimizer(self.a.lr, self.a.beta1)
             discrim_grads_and_vars = discrim_optim.compute_gradients(discrim_loss, var_list=discrim_tvars)
             discrim_train = discrim_optim.apply_gradients(discrim_grads_and_vars)
@@ -67,10 +63,6 @@ class pix2pix:
             with tf.control_dependencies([discrim_train]):
                 #gen_tvars = [var for var in tf.trainable_variables() if var.name.startswith("generator")]
                 gen_tvars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='generator')
-                print('--- generator ----')
-                for i, var in enumerate(gen_tvars):
-                    print('i={}, var = {}'.format(i, var))
-
                 gen_optim = tf.train.AdamOptimizer(self.a.lr, self.a.beta1)
                 gen_grads_and_vars = gen_optim.compute_gradients(gen_loss, var_list=gen_tvars)
                 gen_train = gen_optim.apply_gradients(gen_grads_and_vars)

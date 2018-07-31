@@ -75,12 +75,10 @@ class pix2pix:
             gen_loss_L1 = tf.reduce_mean(tf.abs(targets - outputs))
             gen_loss = gen_loss_GAN * self.a.gan_weight + gen_loss_L1 * self.a.l1_weight
 
+        #extra_update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+
         with tf.name_scope("discriminator_train"):
             discrim_tvars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='var_discriminator')
-            print('--- discriminator ----')
-            for i, var in enumerate(discrim_tvars):
-                print('i={}, var = {}'.format(i, var))
-
             discrim_optim = tf.train.AdamOptimizer(self.a.lr, self.a.beta1)
             discrim_grads_and_vars = discrim_optim.compute_gradients(discrim_loss, var_list=discrim_tvars)
             discrim_train = discrim_optim.apply_gradients(discrim_grads_and_vars)
@@ -88,10 +86,6 @@ class pix2pix:
         with tf.name_scope("generator_train"):
             with tf.control_dependencies([discrim_train]):
                 gen_tvars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='var_generator')
-                print('--- generator ----')
-                for i, var in enumerate(gen_tvars):
-                    print('i={}, var = {}'.format(i, var))
-
                 gen_optim = tf.train.AdamOptimizer(self.a.lr, self.a.beta1)
                 gen_grads_and_vars = gen_optim.compute_gradients(gen_loss, var_list=gen_tvars)
                 gen_train = gen_optim.apply_gradients(gen_grads_and_vars)
