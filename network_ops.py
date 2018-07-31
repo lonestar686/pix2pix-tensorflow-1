@@ -8,7 +8,7 @@ class Conv2d(Module):
     """
     def __init__(self, out_channels, kernel_size, stride):
 
-        self.conv=conv(out_channels, stride, kernel_size)
+        self.conv=conv(out_channels, kernel_size, stride)
 
     def forward(self, x):
         x = self.conv(x)
@@ -18,7 +18,7 @@ class ConvTranspose2d(Module):
     """ wrapper for transposed convolution
     """
     def __init__(self, out_channels, kernel_size, stride):
-        self.deconv = deconv(out_channels, stride, kernel_size)
+        self.deconv = deconv(out_channels, kernel_size, stride)
 
     def forward(self, x):
         x = self.deconv(x)
