@@ -17,10 +17,12 @@ def dropout(a):
 def concat(axis=-1):
     return tf.keras.layers.Concatenate(axis)
 
-def batchnorm(axis=-1, epsilon=1e-4, momentum=0.99):
-    return tf.keras.layers.BatchNormalization(axis, epsilon, momentum)
+def batchnorm(axis=-1, momentum=0.99, epsilon=0.001):
+    
+    return tf.keras.layers.BatchNormalization(axis, momentum=momentum, epsilon=epsilon, 
+                             gamma_initializer=tf.random_normal_initializer(1.0, 0.02))
 
-def conv(out_channels, stride=2, kernel_size=4):
+def conv(out_channels, kernel_size, stride):
     initializer = tf.random_normal_initializer(0, 0.02)
     conv=tf.keras.layers.Conv2D(out_channels, 
                                 kernel_size=kernel_size, 
@@ -29,7 +31,7 @@ def conv(out_channels, stride=2, kernel_size=4):
                                 kernel_initializer=initializer)
     return conv
 
-def deconv(out_channels, stride=2, kernel_size=4):
+def deconv(out_channels, kernel_size, stride):
     initializer = tf.random_normal_initializer(0, 0.02)
     # [batch, in_height, in_width, in_channels] => [batch, out_height, out_width, out_channels]
     conv_trans = tf.keras.layers.Conv2DTranspose(out_channels, 
