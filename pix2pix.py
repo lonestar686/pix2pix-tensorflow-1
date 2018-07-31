@@ -247,8 +247,10 @@ def main():
     saver = tf.train.Saver(max_to_keep=1)
 
 	# don't take the whole memory
-    config = tf.ConfigProto()
-    config.gpu_options.allow_growth = True   #pylint: disable=E1101
+    # config = tf.ConfigProto()
+    # config.gpu_options.allow_growth = True   #pylint: disable=E1101
+    # another configuration for GPU memory
+    config = tf.ConfigProto(gpu_options=tf.GPUOptions(allow_growth=True))
 
     logdir = a.output_dir if (a.trace_freq > 0 or a.summary_freq > 0) else None
     sv = tf.train.Supervisor(logdir=logdir, save_summaries_secs=0, saver=None)
