@@ -51,6 +51,7 @@ parser.add_argument("--model", type=str, default='keras', help='network model')
 parser.add_argument("--output_filetype", default="png", choices=["png", "jpeg"])
 a = parser.parse_args()
 
+# pylint: disable=wildcard-import,,unused-import,line-too-long
 # load data
 from load_examples import *
 # load utilities
@@ -246,6 +247,9 @@ def main():
 
     saver = tf.train.Saver(max_to_keep=1)
 
+    # for qc purpose
+    uninit_vars = tf.report_uninitialized_variables()
+
 	# don't take the whole memory
     # config = tf.ConfigProto()
     # config.gpu_options.allow_growth = True   #pylint: disable=E1101
@@ -257,6 +261,8 @@ def main():
     with sv.managed_session(config=config) as sess:
 
         print("parameter_count =", sess.run(parameter_count))
+
+        print("uninitialized vars: ", sess.run(uninit_vars))
 
         if a.checkpoint is not None:
             print("loading model from checkpoint")
