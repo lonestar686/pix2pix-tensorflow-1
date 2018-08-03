@@ -12,19 +12,16 @@ class UnetGenerator(Module):
         self.encoder = self._build_encoder(ngf)
         self.decoder = self._build_decoder(ngf, generator_outputs_channels)
 
-    def forward(self, generator_inputs):
+    def forward(self, inputs_generator):
 
         # cache for convenience
         encoder = self.encoder
         decoder = self.decoder
 
-        # input data
-        input_generator = tf.keras.layers.Input(tensor=generator_inputs)
-
         layers = []
 
         # encoder
-        x = input_generator
+        x = inputs_generator
         for op in encoder:
             x = op(x)
             layers.append(x)
@@ -124,12 +121,10 @@ class UnetDiscriminator(Module):
     def __init__(self, ndf, n_layers=3):
         self.network = self._build_network(ndf, n_layers)
 
-    def forward(self, input_combined):
-        #
-        input_discriminator = tf.keras.layers.Input(tensor=input_combined)
+    def forward(self, inputs_discriminator):
 
         # apply operators to the data
-        x = self.network(input_discriminator)
+        x = self.network(inputs_discriminator)
 
         # for qc testing
         # model = tf.keras.models.Model(input_discriminator, x)

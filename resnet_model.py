@@ -45,9 +45,6 @@ class ResnetGenerator(Module):
 
     def forward(self, input):
 
-        # input data
-        input = tf.keras.layers.Input(tensor=input)
-
         output = self.model(input)
 
         # # qc 
@@ -116,8 +113,7 @@ class NLayerDiscriminator(Module):
         self.model = Sequential(*sequence)
 
     def forward(self, input):
-        # input data
-        input = tf.keras.layers.Input(tensor=input)
+        # 
         output = self.model(input)
 
         # # qc 

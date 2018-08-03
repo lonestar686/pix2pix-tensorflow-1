@@ -29,39 +29,58 @@ class pix2pix:
     """ to build pix2pix model
     """
     def __init__(self, a):
-        self.a  = a 
+        self.a  = a
 
-    def create_model(self, inputs, targets):
+        # create a discriminator for sharing
+        self.discriminator = Discriminator(self.a.ndf)
+
+    def create_generator(self, inputs, outputs_channels):
+        """ function to create a generator
+        """
+        # input data
+        inputs_generator = tf.keras.layers.Input(tensor=inputs)
 
         # create generator
-        out_channels = int(targets.get_shape()[-1])
-        generator = Generator(out_channels, self.a.ngf)
+        generator = Generator(outputs_channels, self.a.ngf)
 
         # apply the network
         with tf.variable_scope("var_generator"):
-            outputs = generator(inputs)
+            outputs = generator(inputs_generator)
 
-        # create discriminators
-        discriminator = Discriminator(self.a.ndf)
+        return outputs
 
+    def create_discriminator(self, inputs, targets):
+        """ function to create a discriminator
+        """
         # create two copies of discriminator, one for real pairs and one for fake pairs
         # they share the same underlying variables
         # with tf.name_scope("real_discriminator"):
         # 2x [batch, height, width, channels] => [batch, 30, 30, 1]
         with tf.variable_scope("var_discriminator"):
             # 2x [batch, height, width, in_channels] => [batch, height, width, in_channels * 2]
-            input_targets = tf.concat([inputs, targets], axis=-1)
+            inputs_targets = tf.concat([inputs, targets], axis=-1)
+            #
+            inputs_discriminator = tf.keras.layers.Input(tensor=inputs_targets)
             # apply the network
-            predict_real = discriminator(input_targets)
+            predict = self.discriminator(inputs_discriminator)
 
-        # with tf.name_scope("fake_discriminator"):
-        # 2x [batch, height, width, channels] => [batch, 30, 30, 1]
-        with tf.variable_scope("var_discriminator"):
-            # 2x [batch, height, width, in_channels] => [batch, height, width, in_channels * 2]
-            input_outputs = tf.concat([inputs, outputs], axis=-1)
-            # apply the network           
-            predict_fake = discriminator(input_outputs)   
+        return predict
 
+    def create_model(self, inputs, targets):
+
+        # create generator
+        out_channels = int(targets.get_shape()[-1])
+        outputs = self.create_generator(inputs, out_channels)
+
+        # create two copies of discriminator, one for real pairs and one for fake pairs
+        # they share the same underlying variables
+        # real_discriminator
+        predict_real = self.create_discriminator(inputs, targets)
+
+        # fake_discriminator           
+        predict_fake = self.create_discriminator(inputs, outputs)   
+
+        # 
         with tf.name_scope("discriminator_loss"):
             # minimizing -tf.log will try to get inputs to 1
             # predict_real => 1
