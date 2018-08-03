@@ -94,23 +94,20 @@ def lrelu(x, a):
 def batchnorm(inputs):
     return tf.layers.batch_normalization(inputs, axis=3, epsilon=1e-3, momentum=0.99, training=True, gamma_initializer=tf.random_normal_initializer(1.0, 0.02))
 
-# def discrim_conv(batch_input, out_channels, stride):
+# def conv(batch_input, out_channels, stride):
 #     padded_input = tf.pad(batch_input, [[0, 0], [1, 1], [1, 1], [0, 0]], mode="CONSTANT")
 #     return tf.layers.conv2d(padded_input, out_channels, kernel_size=4, strides=(stride, stride), padding="valid", kernel_initializer=tf.random_normal_initializer(0, 0.02))
 
-def discrim_conv(batch_input, out_channels, stride):
-    return tf.layers.conv2d(batch_input, out_channels, kernel_size=4, strides=(stride, stride), padding="same", kernel_initializer=tf.random_normal_initializer(0, 0.02))
-
-def gen_conv(batch_input, out_channels):
+def conv(batch_input, out_channels, kernel_size, stride):
     # [batch, in_height, in_width, in_channels] => [batch, out_height, out_width, out_channels]
     initializer = tf.random_normal_initializer(0, 0.02)
-    return tf.layers.conv2d(batch_input, out_channels, kernel_size=4, strides=(2, 2), padding="same", kernel_initializer=initializer)
+    return tf.layers.conv2d(batch_input, out_channels, kernel_size=kernel_size, strides=(stride, stride), padding="same", kernel_initializer=initializer)
 
 
-def gen_deconv(batch_input, out_channels):
+def deconv(batch_input, out_channels, kernel_size, stride):
     # [batch, in_height, in_width, in_channels] => [batch, out_height, out_width, out_channels]
     initializer = tf.random_normal_initializer(0, 0.02)
-    return tf.layers.conv2d_transpose(batch_input, out_channels, kernel_size=4, strides=(2, 2), padding="same", kernel_initializer=initializer)
+    return tf.layers.conv2d_transpose(batch_input, out_channels, kernel_size=kernel_size, strides=(2, 2), padding="same", kernel_initializer=initializer)
 
 
 def create_generator(generator_inputs, generator_outputs_channels, ngf):
@@ -118,7 +115,7 @@ def create_generator(generator_inputs, generator_outputs_channels, ngf):
 
     # encoder_1: [batch, 256, 256, in_channels] => [batch, 128, 128, ngf]
     with tf.variable_scope("encoder_1"):
-        output = gen_conv(generator_inputs, ngf)
+        output = conv(generator_inputs, ngf, kernel_size=4, stride=2)
         layers.append(output)
 
     layer_specs = [
@@ -135,7 +132,7 @@ def create_generator(generator_inputs, generator_outputs_channels, ngf):
         with tf.variable_scope("encoder_%d" % (len(layers) + 1)):
             rectified = lrelu(layers[-1], 0.2)
             # [batch, in_height, in_width, in_channels] => [batch, in_height/2, in_width/2, out_channels]
-            convolved = gen_conv(rectified, out_channels)
+            convolved = conv(rectified, out_channels, kernel_size=4, stride=2)
             output = batchnorm(convolved)
             layers.append(output)
 
@@ -162,7 +159,7 @@ def create_generator(generator_inputs, generator_outputs_channels, ngf):
 
             rectified = tf.nn.relu(input)
             # [batch, in_height, in_width, in_channels] => [batch, in_height*2, in_width*2, out_channels]
-            output = gen_deconv(rectified, out_channels)
+            output = deconv(rectified, out_channels, kernel_size=4, stride=2)
             output = batchnorm(output)
 
             if dropout > 0.0:
@@ -174,7 +171,7 @@ def create_generator(generator_inputs, generator_outputs_channels, ngf):
     with tf.variable_scope("decoder_1"):
         input = tf.concat([layers[-1], layers[0]], axis=3)
         rectified = tf.nn.relu(input)
-        output = gen_deconv(rectified, generator_outputs_channels)
+        output = deconv(rectified, generator_outputs_channels, kernel_size=4, stride=2)
         output = tf.tanh(output)
         layers.append(output)
 
@@ -189,7 +186,7 @@ def create_discriminator(discrim_inputs, discrim_targets, ndf):
 
     # layer_1: [batch, 256, 256, in_channels * 2] => [batch, 128, 128, ndf]
     with tf.variable_scope("layer_1"):
-        convolved = discrim_conv(input, ndf, stride=2)
+        convolved = conv(input, ndf, kernel_size=4, stride=2)
         rectified = lrelu(convolved, 0.2)
         layers.append(rectified)
 
@@ -200,14 +197,14 @@ def create_discriminator(discrim_inputs, discrim_targets, ndf):
         with tf.variable_scope("layer_%d" % (len(layers) + 1)):
             out_channels = ndf * min(2**(i+1), 8)
             stride = 1 if i == n_layers - 1 else 2  # last layer here has stride 1
-            convolved = discrim_conv(layers[-1], out_channels, stride=stride)
+            convolved = conv(layers[-1], out_channels, kernel_size=4, stride=stride)
             normalized = batchnorm(convolved)
             rectified = lrelu(normalized, 0.2)
             layers.append(rectified)
 
     # layer_5: [batch, 31, 31, ndf * 8] => [batch, 30, 30, 1]
     with tf.variable_scope("layer_%d" % (len(layers) + 1)):
-        convolved = discrim_conv(rectified, out_channels=1, stride=1)
+        convolved = conv(rectified, out_channels=1, kernel_size=4, stride=1)
         output = tf.sigmoid(convolved)
         layers.append(output)
 

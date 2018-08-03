@@ -7,7 +7,6 @@ import numpy as np
 import argparse
 import os
 import json
-import glob
 import random
 
 import math
@@ -66,7 +65,9 @@ else:
     from model_tf import *
 
 # set up gpus
-os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
+# Set CUDA_DEVICE_ORDER so the IDs assigned by CUDA match those from nvidia-smi
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+#
 os.environ["CUDA_VISIBLE_DEVICES"]=str(a.gpu_id)
 
 def main():

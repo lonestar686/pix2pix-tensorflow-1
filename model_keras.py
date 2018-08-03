@@ -94,13 +94,14 @@ class pix2pix:
             gen_loss_L1 = tf.reduce_mean(tf.abs(targets - outputs))
             gen_loss = gen_loss_GAN * self.a.gan_weight + gen_loss_L1 * self.a.l1_weight
 
-        #extra_update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-
+        # for keras batch normalization?
+        extra_update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
         with tf.name_scope("discriminator_train"):
-            discrim_tvars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='var_discriminator')
-            discrim_optim = tf.train.AdamOptimizer(self.a.lr, self.a.beta1)
-            discrim_grads_and_vars = discrim_optim.compute_gradients(discrim_loss, var_list=discrim_tvars)
-            discrim_train = discrim_optim.apply_gradients(discrim_grads_and_vars)
+            with tf.control_dependencies(extra_update_ops):
+                discrim_tvars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='var_discriminator')
+                discrim_optim = tf.train.AdamOptimizer(self.a.lr, self.a.beta1)
+                discrim_grads_and_vars = discrim_optim.compute_gradients(discrim_loss, var_list=discrim_tvars)
+                discrim_train = discrim_optim.apply_gradients(discrim_grads_and_vars)
 
         with tf.name_scope("generator_train"):
             with tf.control_dependencies([discrim_train]):
