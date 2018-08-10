@@ -30,8 +30,8 @@ class BatchNorm2d(Module):
     def __init__(self):
         self.batchnorm = batchnorm()
 
-    def forward(self, x):
-        x = self.batchnorm(x)
+    def forward(self, x, is_training):
+        x = self.batchnorm(x, training=is_training)
         return x
 
 class Activation(Module):
@@ -60,8 +60,8 @@ class Dropout(Module):
     def __init__(self, dropout_rate):
         self.dropout = dropout(dropout_rate)
 
-    def forward(self, x):
-        x = self.dropout(x)
+    def forward(self, x, is_training):
+        x = self.dropout(x, training=is_training)
         return x
 
 class Concat(Module):

@@ -22,19 +22,17 @@ class ResnetGenerator(Module):
         n_downsampling = 2
         for i in range(n_downsampling):
             mult = 2**i
-            model += [Conv2d(ngf * mult * 2, kernel_size=3,
-                                stride=2),
+            model += [Conv2d(ngf * mult * 2, kernel_size=3, stride=2),
                       BatchNorm2d(),
                       Activation('relu')]
 
         mult = 2**n_downsampling
         for i in range(n_blocks):
-            model += [ResnetBlock(ngf * mult, use_dropout=use_dropout)]
+            model += [ResnetBlock(ngf * mult, use_dropout)]
 
         for i in range(n_downsampling):
             mult = 2**(n_downsampling - i)
-            model += [ConvTranspose2d(int(ngf * mult / 2),
-                                         kernel_size=3, stride=2),
+            model += [ConvTranspose2d(int(ngf * mult / 2), kernel_size=3, stride=2),
                       BatchNorm2d(),
                       Activation('relu')]
 

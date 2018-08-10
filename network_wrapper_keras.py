@@ -18,9 +18,9 @@ def concat(axis=-1):
     return tf.keras.layers.Concatenate(axis)
 
 def batchnorm(axis=-1, momentum=0.99, epsilon=0.001):
-    
+    initializer = tf.random_normal_initializer(0, 0.02)
     return tf.keras.layers.BatchNormalization(axis, momentum=momentum, epsilon=epsilon, 
-                             gamma_initializer=tf.random_normal_initializer(1.0, 0.02))
+                             gamma_initializer=initializer)
 
 def conv(out_channels, kernel_size, stride):
     initializer = tf.random_normal_initializer(0, 0.02)

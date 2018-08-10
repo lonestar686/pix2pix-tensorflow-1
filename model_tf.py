@@ -17,14 +17,15 @@ Model = collections.namedtuple("Model", "outputs, predict_real, predict_fake, di
 class pix2pix:
     """ to build pix2pix model
     """
-    def __init__(self, a):
+    def __init__(self, a, out_channels):
         self.a  = a 
+        self.out_channels = out_channels
 
 
     def create_model(self, inputs, targets):
- 
+        #
+        out_channels = self.out_channels
         with tf.variable_scope("generator"):
-            out_channels = int(targets.get_shape()[-1])
             outputs = create_generator(inputs, out_channels, self.a.ngf)
 
         # create two copies of discriminator, one for real pairs and one for fake pairs
@@ -110,7 +111,7 @@ def deconv(batch_input, out_channels, kernel_size, stride):
     return tf.layers.conv2d_transpose(batch_input, out_channels, kernel_size=kernel_size, strides=(2, 2), padding="same", kernel_initializer=initializer)
 
 
-def create_generator(generator_inputs, generator_outputs_channels, ngf):
+def create_generator(generator_inputs, outputs_channels, ngf):
     layers = []
 
     # encoder_1: [batch, 256, 256, in_channels] => [batch, 128, 128, ngf]
@@ -167,11 +168,11 @@ def create_generator(generator_inputs, generator_outputs_channels, ngf):
 
             layers.append(output)
 
-    # decoder_1: [batch, 128, 128, ngf * 2] => [batch, 256, 256, generator_outputs_channels]
+    # decoder_1: [batch, 128, 128, ngf * 2] => [batch, 256, 256, outputs_channels]
     with tf.variable_scope("decoder_1"):
         input = tf.concat([layers[-1], layers[0]], axis=3)
         rectified = tf.nn.relu(input)
-        output = deconv(rectified, generator_outputs_channels, kernel_size=4, stride=2)
+        output = deconv(rectified, outputs_channels, kernel_size=4, stride=2)
         output = tf.tanh(output)
         layers.append(output)
 

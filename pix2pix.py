@@ -43,7 +43,7 @@ parser.add_argument("--beta1", type=float, default=0.5, help="momentum term of a
 parser.add_argument("--l1_weight", type=float, default=100.0, help="weight on L1 term for generator gradient")
 parser.add_argument("--gan_weight", type=float, default=1.0, help="weight on GAN term for generator gradient")
 #
-parser.add_argument("--gpu_id", type=int, default=3, help="gpu id to run")
+parser.add_argument("--gpu_id", type=int, default=0, help="gpu id to run")
 parser.add_argument("--model", type=str, default='keras', help='network model')
 
 # export options
@@ -164,7 +164,8 @@ def main():
     print("examples count = %d" % examples.count)
 
     # pix2pix model
-    pix_model = pix2pix(a)
+    out_channels = int(examples.targets.get_shape()[-1])
+    pix_model = pix2pix(a, out_channels)
 
     # inputs and targets are [batch_size, height, width, channels]
     model = pix_model.create_model(examples.inputs, examples.targets)

@@ -2,8 +2,8 @@ import tensorflow as tf
 import collections
 
 # unet
-from unet_model import UnetGenerator as Generator
-from unet_model import UnetDiscriminator as Discriminator
+from unet_keras import UnetGenerator as Generator
+from unet_keras import Discriminator
 
 # Resnet
 # from resnet_model import ResnetGenerator as Generator
@@ -28,28 +28,28 @@ Model = collections.namedtuple("Model", "outputs, predict_real, predict_fake, \
 class pix2pix:
     """ to build pix2pix model
     """
-    def __init__(self, a):
+    def __init__(self, a, outputs_channels):
         self.a  = a
 
         # create a discriminator for sharing
         self.discriminator = Discriminator(self.a.ndf)
+        # create generator
+        self.generator = Generator(outputs_channels, self.a.ngf)
 
-    def create_generator(self, inputs, outputs_channels):
+
+    def create_generator(self, inputs, is_training):
         """ function to create a generator
         """
         # input data
         inputs_generator = tf.keras.layers.Input(tensor=inputs)
 
-        # create generator
-        generator = Generator(outputs_channels, self.a.ngf)
-
         # apply the network
         with tf.variable_scope("var_generator"):
-            outputs = generator(inputs_generator)
+            outputs = self.generator(inputs_generator, is_training)
 
         return outputs
 
-    def create_discriminator(self, inputs, targets):
+    def create_discriminator(self, inputs, targets, is_training):
         """ function to create a discriminator
         """
         # create two copies of discriminator, one for real pairs and one for fake pairs
@@ -62,23 +62,22 @@ class pix2pix:
             #
             inputs_discriminator = tf.keras.layers.Input(tensor=inputs_targets)
             # apply the network
-            predict = self.discriminator(inputs_discriminator)
+            predict = self.discriminator(inputs_discriminator, is_training=True)
 
         return predict
 
     def create_model(self, inputs, targets):
 
         # create generator
-        out_channels = int(targets.get_shape()[-1])
-        outputs = self.create_generator(inputs, out_channels)
+        outputs = self.create_generator(inputs, is_training=True)
 
         # create two copies of discriminator, one for real pairs and one for fake pairs
         # they share the same underlying variables
         # real_discriminator
-        predict_real = self.create_discriminator(inputs, targets)
+        predict_real = self.create_discriminator(inputs, targets, is_training=True)
 
         # fake_discriminator           
-        predict_fake = self.create_discriminator(inputs, outputs)   
+        predict_fake = self.create_discriminator(inputs, outputs, is_training=True)   
 
         # 
         with tf.name_scope("discriminator_loss"):
