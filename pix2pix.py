@@ -182,13 +182,13 @@ def main():
             inputs = deprocess(examples.inputs)
         elif a.which_direction == "BtoA":
             # inputs will be color channels only, get brightness from targets
-            inputs = augment(examples.inputs, examples.targets)
+            inputs  = augment(examples.inputs, examples.targets)
             targets = deprocess(examples.targets)
             outputs = deprocess(model.outputs)
         else:
             raise Exception("invalid direction")
     else:
-        inputs = deprocess(examples.inputs)
+        inputs  = deprocess(examples.inputs)
         targets = deprocess(examples.targets)
         outputs = deprocess(model.outputs)
 
@@ -213,7 +213,7 @@ def main():
     with tf.name_scope("encode_images"):
         display_fetches = {
             "paths": examples.paths,
-            "inputs": tf.map_fn(tf.image.encode_png, converted_inputs, dtype=tf.string, name="input_pngs"),
+            "inputs":  tf.map_fn(tf.image.encode_png, converted_inputs,  dtype=tf.string, name="input_pngs"),
             "targets": tf.map_fn(tf.image.encode_png, converted_targets, dtype=tf.string, name="target_pngs"),
             "outputs": tf.map_fn(tf.image.encode_png, converted_outputs, dtype=tf.string, name="output_pngs"),
         }
@@ -247,16 +247,14 @@ def main():
     with tf.name_scope("parameter_count"):
         parameter_count = tf.reduce_sum([tf.reduce_prod(tf.shape(v)) for v in tf.trainable_variables()])
 
-    saver = tf.train.Saver(max_to_keep=1)
-
-    # for qc purpose
-    uninit_vars = tf.report_uninitialized_variables()
-
 	# don't take the whole memory
     # config = tf.ConfigProto()
     # config.gpu_options.allow_growth = True   #pylint: disable=E1101
+
     # another configuration for GPU memory
     config = tf.ConfigProto(gpu_options=tf.GPUOptions(allow_growth=True))
+
+    saver = tf.train.Saver(max_to_keep=1)
 
     logdir = a.output_dir if (a.trace_freq > 0 or a.summary_freq > 0) else None
     sv = tf.train.Supervisor(logdir=logdir, save_summaries_secs=0, saver=None)
@@ -264,13 +262,13 @@ def main():
 
         print("parameter_count =", sess.run(parameter_count))
 
-        print("uninitialized vars: ", sess.run(uninit_vars))
-
+        # load previous checkpoint
         if a.checkpoint is not None:
             print("loading model from checkpoint")
             checkpoint = tf.train.latest_checkpoint(a.checkpoint)
             saver.restore(sess, checkpoint)
 
+        # compute max_steps
         max_steps = 2**32
         if a.max_epochs is not None:
             max_steps = examples.steps_per_epoch * a.max_epochs
@@ -298,6 +296,7 @@ def main():
                 def should(freq):
                     return freq > 0 and ((step + 1) % freq == 0 or step == max_steps - 1)
 
+                # before the run
                 options = None
                 run_metadata = None
                 if should(a.trace_freq):
@@ -312,7 +311,7 @@ def main():
                 if should(a.progress_freq):
                     fetches["discrim_loss"] = model.discrim_loss
                     fetches["gen_loss_GAN"] = model.gen_loss_GAN
-                    fetches["gen_loss_L1"] = model.gen_loss_L1
+                    fetches["gen_loss_L1"]  = model.gen_loss_L1
 
                 if should(a.summary_freq):
                     fetches["summary"] = sv.summary_op
@@ -320,20 +319,18 @@ def main():
                 if should(a.display_freq):
                     fetches["display"] = display_fetches
 
+                # the run
                 results = sess.run(fetches, options=options, run_metadata=run_metadata)
 
-                if should(a.summary_freq):
-                    print("recording summary")
-                    sv.summary_writer.add_summary(results["summary"], results["global_step"])
-
+                # after run
                 if should(a.display_freq):
                     print("saving display images")
                     filesets = save_images(results["display"], step=results["global_step"])
                     append_index(filesets, step=True)
 
-                if should(a.trace_freq):
-                    print("recording trace")
-                    sv.summary_writer.add_run_metadata(run_metadata, "step_%d" % results["global_step"])
+                if should(a.summary_freq):
+                    print("recording summary")
+                    sv.summary_writer.add_summary(results["summary"], results["global_step"])
 
                 if should(a.progress_freq):
                     # global_step will have the correct step count if we resume from a checkpoint
@@ -345,6 +342,10 @@ def main():
                     print("discrim_loss", results["discrim_loss"])
                     print("gen_loss_GAN", results["gen_loss_GAN"])
                     print("gen_loss_L1", results["gen_loss_L1"])
+
+                if should(a.trace_freq):
+                    print("recording trace")
+                    sv.summary_writer.add_run_metadata(run_metadata, "step_%d" % results["global_step"])
 
                 if should(a.save_freq):
                     print("saving model")

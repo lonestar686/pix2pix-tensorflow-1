@@ -20,8 +20,8 @@ def augment(image, brightness):
     return rgb
 
 @export
-def save_images(fetches, step=None):
-    image_dir = os.path.join(a.output_dir, "images")
+def save_images(fetches, output_dir, step=None):
+    image_dir = os.path.join(output_dir, "images")
     if not os.path.exists(image_dir):
         os.makedirs(image_dir)
 
@@ -42,8 +42,8 @@ def save_images(fetches, step=None):
     return filesets
 
 @export
-def append_index(filesets, step=False):
-    index_path = os.path.join(a.output_dir, "index.html")
+def append_index(filesets, output_dir, step=False):
+    index_path = os.path.join(output_dir, "index.html")
     if os.path.exists(index_path):
         index = open(index_path, "a")
     else:
