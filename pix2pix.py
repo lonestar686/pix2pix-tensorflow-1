@@ -258,6 +258,44 @@ def main():
 
     logdir = a.output_dir if (a.trace_freq > 0 or a.summary_freq > 0) else None
     sv = tf.train.Supervisor(logdir=logdir, save_summaries_secs=0, saver=None)
+
+    # compute max_steps
+    max_steps = 2**32
+    if a.max_epochs is not None:
+        max_steps = examples.steps_per_epoch * a.max_epochs
+    if a.max_steps is not None:
+        max_steps = a.max_steps
+
+    # # starting to replace Supervisor
+    # # hooks
+    # train_hooks = [
+    #     tf.train.StopAtStepHook(last_step=max_steps),
+    #     tf.train.CheckpointSaverHook(
+    #         checkpoint_dir=a.checkpoint,
+    #         save_steps=a.save_freq,
+    #         saver=saver
+    #     )
+    # ]
+    # # 
+    # with tf.train.MonitoredTrainingSession(hooks=train_hooks, config=config) as sess:
+    #     #
+    #     while not sess.should_stop():
+
+    #         # before the run
+    #         options = None
+    #         run_metadata = None
+    #         if should(a.trace_freq):
+    #             options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)  #pylint: disable=E1101
+    #             run_metadata = tf.RunMetadata()
+
+    #         fetches = {
+    #             "train": model.train,
+    #             "global_step": sv.global_step,
+    #         }
+
+    #         # the run            
+    #         results = sess.run(fetches, options=options, run_metadata=run_metadata)
+
     with sv.managed_session(config=config) as sess:
 
         print("parameter_count =", sess.run(parameter_count))
@@ -267,13 +305,6 @@ def main():
             print("loading model from checkpoint")
             checkpoint = tf.train.latest_checkpoint(a.checkpoint)
             saver.restore(sess, checkpoint)
-
-        # compute max_steps
-        max_steps = 2**32
-        if a.max_epochs is not None:
-            max_steps = examples.steps_per_epoch * a.max_epochs
-        if a.max_steps is not None:
-            max_steps = a.max_steps
 
         if a.mode == "test":
             # testing
