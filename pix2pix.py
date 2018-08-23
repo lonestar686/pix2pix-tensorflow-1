@@ -325,8 +325,8 @@ def main():
                 # after run
                 if should(a.display_freq):
                     print("saving display images")
-                    filesets = save_images(results["display"], step=results["global_step"])
-                    append_index(filesets, step=True)
+                    filesets = save_images(results["display"], a.output_dir, step=results["global_step"])
+                    append_index(filesets, a.output_dir, step=True)
 
                 if should(a.summary_freq):
                     print("recording summary")
