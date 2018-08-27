@@ -254,10 +254,7 @@ def main():
     # another configuration for GPU memory
     config = tf.ConfigProto(gpu_options=tf.GPUOptions(allow_growth=True))
 
-    saver = tf.train.Saver(max_to_keep=1)
-
     logdir = a.output_dir if (a.trace_freq > 0 or a.summary_freq > 0) else None
-    sv = tf.train.Supervisor(logdir=logdir, save_summaries_secs=0, saver=None)
 
     # compute max_steps
     max_steps = 2**32
@@ -273,11 +270,23 @@ def main():
     #     tf.train.CheckpointSaverHook(
     #         checkpoint_dir=a.checkpoint,
     #         save_steps=a.save_freq,
-    #         saver=saver
+    #         saver=tf.train.Saver(max_to_keep=1)
+    #     ),
+    #     tf.train.SummarySaverHook(
+    #         save_steps=a.summary_freq,
+    #         output_dir=logdir,
+    #     ),
+    #     tf.train.LoggingTensorHook(
+    #         tensors={"discrim_loss": model.discrim_loss,
+    #                  "gen_loss_GAN": model.gen_loss_GAN,
+    #                  "gen_loss_L1": model.gen_loss_L1},
+    #         every_n_iter=a.progress_freq,
     #     )
     # ]
+
     # # 
     # with tf.train.MonitoredTrainingSession(hooks=train_hooks, config=config) as sess:
+
     #     #
     #     while not sess.should_stop():
 
@@ -288,14 +297,18 @@ def main():
     #             options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)  #pylint: disable=E1101
     #             run_metadata = tf.RunMetadata()
 
+    #         #
     #         fetches = {
     #             "train": model.train,
-    #             "global_step": sv.global_step,
+    #             "global_step": tf.training_util._get_or_create_global_step_read(),    #pylint: disable=protected-access
     #         }
 
     #         # the run            
     #         results = sess.run(fetches, options=options, run_metadata=run_metadata)
 
+    # old version
+    saver=tf.train.Saver(max_to_keep=1)
+    sv = tf.train.Supervisor(logdir=logdir, save_summaries_secs=0, saver=None)
     with sv.managed_session(config=config) as sess:
 
         print("parameter_count =", sess.run(parameter_count))
