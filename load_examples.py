@@ -174,6 +174,7 @@ def load_batch_examples(a):
     else:
         input_paths = sorted(input_paths)
 
+    # Shuffle, repeat, and batch
     with tf.name_scope("load_images"):
         # Make a Dataset of file names including all the JPEG images files in
         # the relative image directory.
@@ -191,12 +192,12 @@ def load_batch_examples(a):
     # transform data
     dataset = dataset.map(transform_pairs, num_parallel_calls=NUM_PARALLELS)
 
-    #paths_batch, inputs_batch, targets_batch = tf.train.batch([paths, input_images, target_images], batch_size=a.batch_size)
-    dataset = dataset.batch(a.batch_size)
-
     # repeat forever for training data
     if a.mode == 'train': 
         dataset = dataset.repeat()
+
+    #paths_batch, inputs_batch, targets_batch = tf.train.batch([paths, input_images, target_images], batch_size=a.batch_size)
+    dataset = dataset.batch(a.batch_size)
 
     # make an iterator
     iter  = dataset.make_one_shot_iterator()
