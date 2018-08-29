@@ -263,53 +263,40 @@ def main():
     if a.max_steps is not None:
         max_steps = a.max_steps
 
-    # # starting to replace Supervisor
-    # # hooks
-    # train_hooks = [
-    #     tf.train.StopAtStepHook(last_step=max_steps),
-    #     tf.train.CheckpointSaverHook(
-    #         checkpoint_dir=a.checkpoint,
-    #         save_steps=a.save_freq,
-    #         saver=tf.train.Saver(max_to_keep=1)
-    #     ),
-    #     tf.train.SummarySaverHook(
-    #         save_steps=a.summary_freq,
-    #         output_dir=logdir,
-    #     ),
-    #     tf.train.LoggingTensorHook(
-    #         tensors={"discrim_loss": model.discrim_loss,
-    #                  "gen_loss_GAN": model.gen_loss_GAN,
-    #                  "gen_loss_L1": model.gen_loss_L1},
-    #         every_n_iter=a.progress_freq,
-    #     )
-    # ]
-
-    # # 
-    # with tf.train.MonitoredTrainingSession(hooks=train_hooks, config=config) as sess:
-
-    #     #
-    #     while not sess.should_stop():
-
-    #         # before the run
-    #         options = None
-    #         run_metadata = None
-    #         if should(a.trace_freq):
-    #             options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)  #pylint: disable=E1101
-    #             run_metadata = tf.RunMetadata()
-
-    #         #
-    #         fetches = {
-    #             "train": model.train,
-    #             "global_step": tf.training_util._get_or_create_global_step_read(),    #pylint: disable=protected-access
-    #         }
-
-    #         # the run            
-    #         results = sess.run(fetches, options=options, run_metadata=run_metadata)
-
-    # old version
+    # 
     saver=tf.train.Saver(max_to_keep=1)
-    sv = tf.train.Supervisor(logdir=logdir, save_summaries_secs=0, saver=None)
-    with sv.managed_session(config=config) as sess:
+
+    # hooks for tf.train.MonitoredTrainingSession
+    from custom_hooks import TraceHook, DisplayHook
+    #
+    train_hooks = [
+        tf.train.StopAtStepHook(last_step=max_steps),
+        tf.train.CheckpointSaverHook(
+            checkpoint_dir=a.checkpoint,
+            save_steps=a.save_freq,
+            saver=saver
+        ),
+        tf.train.SummarySaverHook(
+            save_steps=a.summary_freq,
+            output_dir=logdir,
+        ),
+        tf.train.LoggingTensorHook(
+            tensors={"discrim_loss": model.discrim_loss,
+                     "gen_loss_GAN": model.gen_loss_GAN,
+                     "gen_loss_L1": model.gen_loss_L1},
+            every_n_iter=a.progress_freq,
+        ),
+        TraceHook(ckptdir=logdir, every_n_step=a.trace_freq),
+        DisplayHook(display_fetches, a.output_dir, every_n_step=a.display_freq)
+    ]
+
+    # use differnt hooks for training and testing
+    if a.mode == "test":
+        hooks = None
+    else:
+        hooks = train_hooks
+    # 
+    with tf.train.MonitoredTrainingSession(hooks=hooks, config=config) as sess:
 
         print("parameter_count =", sess.run(parameter_count))
 
@@ -324,79 +311,118 @@ def main():
             # at most, process the test data once
             start = time.time()
             max_steps = min(examples.steps_per_epoch, max_steps)
-            for step in range(max_steps):
+            for _ in range(max_steps):
                 results = sess.run(display_fetches)
                 filesets = save_images(results, a.output_dir)
                 for i, f in enumerate(filesets):
-                    print("evaluated image", f["name"])
+                    print("{}: evaluated image: {}".format(i, f["name"]))
                 index_path = append_index(filesets, a.output_dir)
             print("wrote index at", index_path)
             print("rate", (time.time() - start) / max_steps)
+
         else:
-            # training
-            start = time.time()
 
-            for step in range(max_steps):
-                def should(freq):
-                    return freq > 0 and ((step + 1) % freq == 0 or step == max_steps - 1)
-
-                # before the run
-                options = None
-                run_metadata = None
-                if should(a.trace_freq):
-                    options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)  #pylint: disable=E1101
-                    run_metadata = tf.RunMetadata()
-
+            # training only
+            while not sess.should_stop():
+                #
                 fetches = {
                     "train": model.train,
-                    "global_step": sv.global_step,
+#                    "global_step": tf.training_util._get_or_create_global_step_read(),    #pylint: disable=protected-access
                 }
 
-                if should(a.progress_freq):
-                    fetches["discrim_loss"] = model.discrim_loss
-                    fetches["gen_loss_GAN"] = model.gen_loss_GAN
-                    fetches["gen_loss_L1"]  = model.gen_loss_L1
+                # the run            
+                results = sess.run(fetches)
 
-                if should(a.summary_freq):
-                    fetches["summary"] = sv.summary_op
+    # old version
+    # sv = tf.train.Supervisor(logdir=logdir, save_summaries_secs=0, saver=None)
+    # with sv.managed_session(config=config) as sess:
 
-                if should(a.display_freq):
-                    fetches["display"] = display_fetches
+    #     print("parameter_count =", sess.run(parameter_count))
 
-                # the run
-                results = sess.run(fetches, options=options, run_metadata=run_metadata)
+    #     # load previous checkpoint
+    #     if a.checkpoint is not None:
+    #         print("loading model from checkpoint")
+    #         checkpoint = tf.train.latest_checkpoint(a.checkpoint)
+    #         saver.restore(sess, checkpoint)
 
-                # after run
-                if should(a.display_freq):
-                    print("saving display images")
-                    filesets = save_images(results["display"], a.output_dir, step=results["global_step"])
-                    append_index(filesets, a.output_dir, step=True)
+    #     if a.mode == "test":
+    #         # testing
+    #         # at most, process the test data once
+    #         start = time.time()
+    #         max_steps = min(examples.steps_per_epoch, max_steps)
+    #         for step in range(max_steps):
+    #             results = sess.run(display_fetches)
+    #             filesets = save_images(results, a.output_dir)
+    #             for i, f in enumerate(filesets):
+    #                 print("evaluated image", f["name"])
+    #             index_path = append_index(filesets, a.output_dir)
+    #         print("wrote index at", index_path)
+    #         print("rate", (time.time() - start) / max_steps)
+    #     else:
+    #         # training
+    #         start = time.time()
 
-                if should(a.summary_freq):
-                    print("recording summary")
-                    sv.summary_writer.add_summary(results["summary"], results["global_step"])
+    #         for step in range(max_steps):
+    #             def should(freq):
+    #                 return freq > 0 and ((step + 1) % freq == 0 or step == max_steps - 1)
 
-                if should(a.progress_freq):
-                    # global_step will have the correct step count if we resume from a checkpoint
-                    train_epoch = math.ceil(results["global_step"] / examples.steps_per_epoch)
-                    train_step = (results["global_step"] - 1) % examples.steps_per_epoch + 1
-                    rate = (step + 1) * a.batch_size / (time.time() - start)
-                    remaining = (max_steps - step) * a.batch_size / rate
-                    print("progress  epoch %d  step %d  image/sec %0.1f  remaining %dm" % (train_epoch, train_step, rate, remaining / 60))
-                    print("discrim_loss", results["discrim_loss"])
-                    print("gen_loss_GAN", results["gen_loss_GAN"])
-                    print("gen_loss_L1", results["gen_loss_L1"])
+    #             # before the run
+    #             options = None
+    #             run_metadata = None
+    #             if should(a.trace_freq):
+    #                 options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)  #pylint: disable=E1101
+    #                 run_metadata = tf.RunMetadata()
 
-                if should(a.trace_freq):
-                    print("recording trace")
-                    sv.summary_writer.add_run_metadata(run_metadata, "step_%d" % results["global_step"])
+    #             fetches = {
+    #                 "train": model.train,
+    #                 "global_step": sv.global_step,
+    #             }
 
-                if should(a.save_freq):
-                    print("saving model")
-                    saver.save(sess, os.path.join(a.output_dir, "model"), global_step=sv.global_step)
+    #             if should(a.progress_freq):
+    #                 fetches["discrim_loss"] = model.discrim_loss
+    #                 fetches["gen_loss_GAN"] = model.gen_loss_GAN
+    #                 fetches["gen_loss_L1"]  = model.gen_loss_L1
 
-                if sv.should_stop():
-                    break
+    #             if should(a.summary_freq):
+    #                 fetches["summary"] = sv.summary_op
+
+    #             if should(a.display_freq):
+    #                 fetches["display"] = display_fetches
+
+    #             # the run
+    #             results = sess.run(fetches, options=options, run_metadata=run_metadata)
+
+    #             # after run
+    #             if should(a.display_freq):
+    #                 print("saving display images")
+    #                 filesets = save_images(results["display"], a.output_dir, step=results["global_step"])
+    #                 append_index(filesets, a.output_dir, step=True)
+
+    #             if should(a.summary_freq):
+    #                 print("recording summary")
+    #                 sv.summary_writer.add_summary(results["summary"], results["global_step"])
+
+    #             if should(a.progress_freq):
+    #                 # global_step will have the correct step count if we resume from a checkpoint
+    #                 train_epoch = math.ceil(results["global_step"] / examples.steps_per_epoch)
+    #                 train_step = (results["global_step"] - 1) % examples.steps_per_epoch + 1
+    #                 rate = (step + 1) * a.batch_size / (time.time() - start)
+    #                 remaining = (max_steps - step) * a.batch_size / rate
+    #                 print("progress  epoch %d  step %d  image/sec %0.1f  remaining %dm" % (train_epoch, train_step, rate, remaining / 60))
+    #                 print("discrim_loss", results["discrim_loss"])
+    #                 print("gen_loss_GAN", results["gen_loss_GAN"])
+    #                 print("gen_loss_L1", results["gen_loss_L1"])
+
+    #             if should(a.trace_freq):
+    #                 print("recording trace")
+    #                 sv.summary_writer.add_run_metadata(run_metadata, "step_%d" % results["global_step"])
+
+    #             if should(a.save_freq):
+    #                 print("saving model")
+    #                 saver.save(sess, os.path.join(a.output_dir, "model"), global_step=sv.global_step)
+
+    #             if sv.should_stop():
+    #                 break
 
 
 main()
