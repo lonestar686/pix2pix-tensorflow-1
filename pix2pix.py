@@ -56,7 +56,21 @@ a = parser.parse_args()
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
 os.environ["CUDA_VISIBLE_DEVICES"]=str(a.gpu_id)
 
-def main():
+# Note: import * only allowed at module level
+# load data
+from load_examples import * # pylint: disable=W0614
+# load utilities
+from utils import * # pylint: disable=wildcard-import,,unused-import,line-too-long
+
+# pick a model
+if a.model == 'keras':
+    print(' using keras model')
+    from model_keras import * # pylint: disable=W0614
+else:
+    print(' using tensorflow model')
+    from model_tf import * # pylint: disable=W0614
+
+def main(argv):
 
     if a.seed is None:
         a.seed = random.randint(0, 2**31 - 1)
@@ -65,19 +79,6 @@ def main():
     tf.set_random_seed(a.seed)
     np.random.seed(a.seed)
     random.seed(a.seed)
-
-    # load data
-    from load_examples import * # pylint: disable=wildcard-import,,unused-import,line-too-long
-    # load utilities
-    from utils import * # pylint: disable=wildcard-import,,unused-import,line-too-long
-
-    # pick a model
-    if a.model == 'keras':
-        print(' using keras model')
-        from model_keras import * # pylint: disable=wildcard-import,,unused-import,line-too-long
-    else:
-        print(' using tensorflow model')
-        from model_tf import * # pylint: disable=wildcard-import,,unused-import,line-too-long
 
     if not os.path.exists(a.output_dir):
         os.makedirs(a.output_dir)
