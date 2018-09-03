@@ -1,5 +1,6 @@
-import tensorflow as tf
+""" tensorflow model """
 import collections
+import tensorflow as tf
 
 EPS = 1e-12
 
@@ -15,15 +16,14 @@ Model = collections.namedtuple("Model", "outputs, predict_real, predict_fake, di
 
 @export
 class pix2pix:
-    """ to build pix2pix model
-    """
+    """ to build pix2pix model """
     def __init__(self, a, out_channels):
-        self.a  = a 
+        self.a = a 
         self.out_channels = out_channels
 
 
     def create_model(self, inputs, targets):
-        #
+        """ create pix2pix model """
         out_channels = self.out_channels
         with tf.variable_scope("generator"):
             outputs = create_generator(inputs, out_channels, self.a.ngf)

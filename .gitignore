@@ -3,5 +3,9 @@ tags
 test
 models
 .idea
+.vscode
 /datasets
 /facades_train
+/maps_tran
+events.out*
+options.json

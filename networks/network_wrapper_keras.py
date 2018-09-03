@@ -1,4 +1,4 @@
-# utility functions for building unet
+""" utility functions for building unet """
 import tensorflow as tf
 
 def identity():
@@ -19,25 +19,25 @@ def concat(axis=-1):
 
 def batchnorm(axis=-1, momentum=0.99, epsilon=0.001):
     initializer = tf.random_normal_initializer(0, 0.02)
-    return tf.keras.layers.BatchNormalization(axis, momentum=momentum, epsilon=epsilon, 
+    return tf.keras.layers.BatchNormalization(axis, momentum=momentum, epsilon=epsilon,
                              gamma_initializer=initializer)
 
 def conv(out_channels, kernel_size, stride):
     initializer = tf.random_normal_initializer(0, 0.02)
-    conv=tf.keras.layers.Conv2D(out_channels, 
-                                kernel_size=kernel_size, 
-                                strides=(stride, stride), 
-                                padding='same', 
+    conv = tf.keras.layers.Conv2D(out_channels,
+                                kernel_size=kernel_size,
+                                strides=(stride, stride),
+                                padding='same',
                                 kernel_initializer=initializer)
     return conv
 
 def deconv(out_channels, kernel_size, stride):
     initializer = tf.random_normal_initializer(0, 0.02)
     # [batch, in_height, in_width, in_channels] => [batch, out_height, out_width, out_channels]
-    conv_trans = tf.keras.layers.Conv2DTranspose(out_channels, 
-                                                 kernel_size=kernel_size, 
-                                                 strides=(stride, stride), 
-                                                 padding='same', 
+    conv_trans = tf.keras.layers.Conv2DTranspose(out_channels,
+                                                 kernel_size=kernel_size,
+                                                 strides=(stride, stride),
+                                                 padding='same',
                                                  kernel_initializer=initializer)
     return conv_trans
 

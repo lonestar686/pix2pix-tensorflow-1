@@ -1,3 +1,4 @@
+""" cumstom hooks """
 import tensorflow as tf
 
 class TraceHook(tf.train.SessionRunHook):
@@ -36,7 +37,7 @@ class TraceHook(tf.train.SessionRunHook):
             self._trace = True
 
 #
-from utils import save_images, append_index
+from .utils import save_images, append_index
 
 class DisplayHook(tf.train.SessionRunHook):
     """ Hook to save display images every N steps. """
@@ -52,7 +53,7 @@ class DisplayHook(tf.train.SessionRunHook):
             raise RuntimeError("Global step should be created to use _TraceHook.")
 
     def before_run(self, run_context):
-        fetches={
+        fetches = {
             "display":self.display_fetches,
             "global_step": tf.train.get_global_step()
         }

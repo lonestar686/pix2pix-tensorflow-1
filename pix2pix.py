@@ -1,3 +1,4 @@
+""" main module to lauch pix2pix """
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -7,13 +8,13 @@ import json
 import random
 import time
 
+import argparse
+
 import numpy as np
 import tensorflow as tf
 
-#
-import argparse
-
 parser = argparse.ArgumentParser()
+
 parser.add_argument("--input_dir", default='./datasets/facades/train', help="path to folder containing images")
 parser.add_argument("--mode", required=True, choices=["train", "test", "export"])
 parser.add_argument("--output_dir", type=str, default='./facades_train', help="where to put output files")
@@ -49,6 +50,7 @@ parser.add_argument("--model", type=str, default='keras', help='network model')
 
 # export options
 parser.add_argument("--output_filetype", default="png", choices=["png", "jpeg"])
+
 a = parser.parse_args()
 
 # set up gpus
@@ -58,17 +60,17 @@ os.environ["CUDA_VISIBLE_DEVICES"]=str(a.gpu_id)
 
 # Note: import * only allowed at module level
 # load data
-from load_examples import * # pylint: disable=W0614
+from networks.load_examples import * # pylint: disable=W0614
 # load utilities
-from utils import * # pylint: disable=wildcard-import,,unused-import,line-too-long
+from networks.utils import * # pylint: disable=wildcard-import,,unused-import,line-too-long
 
 # pick a model
 if a.model == 'keras':
     print(' using keras model')
-    from model_keras import * # pylint: disable=W0614
+    from networks.model_keras import * # pylint: disable=W0614
 else:
     print(' using tensorflow model')
-    from model_tf import * # pylint: disable=W0614
+    from networks.model_tf import * # pylint: disable=W0614
 
 def main(argv):
 
@@ -258,8 +260,8 @@ def main(argv):
     if a.max_steps is not None:
         max_steps = a.max_steps
 
-    # 
-    saver=tf.train.Saver(max_to_keep=1)
+    #
+    saver = tf.train.Saver(max_to_keep=1)
 
     # 
     logdir = a.output_dir if (a.trace_freq > 0 or a.summary_freq > 0) else None
@@ -269,7 +271,7 @@ def main(argv):
         hooks = None
     else: 
         # hooks for tf.train.MonitoredTrainingSession
-        from custom_hooks import TraceHook, DisplayHook
+        from networks.custom_hooks import TraceHook, DisplayHook
         #
         train_hooks = [tf.train.StopAtStepHook(last_step=max_steps),]
         if a.checkpoint:
@@ -344,7 +346,7 @@ def main(argv):
 #                    "global_step": tf.training_util._get_or_create_global_step_read(),    #pylint: disable=protected-access
                 }
 
-                # the run            
+                # the run
                 results = sess.run(fetches)
 
 if __name__ == '__main__':

@@ -1,11 +1,11 @@
-
+""" unet implemented with keras """
 import tensorflow as tf
 from tensorflow.keras.layers import Conv2D, Conv2DTranspose
 from tensorflow.keras.layers import BatchNormalization
 from tensorflow.keras.layers import Activation, LeakyReLU
 from tensorflow.keras.layers import Concatenate, Dropout
 
-from network_modules import Module
+from .network_modules import Module
 
 # generator uses unet architecture
 class UnetGenerator(Module):

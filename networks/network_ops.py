@@ -1,6 +1,6 @@
-# 
-from network_wrapper_keras import *
-from network_modules import Module, Sequential
+""" general network operators """
+from .network_wrapper_keras import *
+from .network_modules import Module, Sequential
 
 # wrap common network operations into module wrappers
 class Conv2d(Module):
@@ -8,7 +8,7 @@ class Conv2d(Module):
     """
     def __init__(self, out_channels, kernel_size, stride):
 
-        self.conv=conv(out_channels, kernel_size, stride)
+        self.conv = conv(out_channels, kernel_size, stride)
 
     def forward(self, x):
         x = self.conv(x)
@@ -39,7 +39,7 @@ class Activation(Module):
     """
     def __init__(self, act):
         self.activation = activation(act)
-    
+
     def forward(self, x):
         x = self.activation(x)
         return x
@@ -49,7 +49,7 @@ class LeakyReLU(Module):
     """
     def __init__(self, a):
         self.lrelu = lrelu(a)
-    
+
     def forward(self, x):
         x = self.lrelu(x)
         return x
@@ -75,7 +75,7 @@ class Concat(Module):
         return x
 
 class Identity(Module):
-    """ wrapper for identity 
+    """ wrapper for identity
     """
     def forward(self, x):
         return x

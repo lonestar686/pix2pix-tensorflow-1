@@ -1,9 +1,10 @@
-import tensorflow as tf
+""" keras model """
 import collections
+import tensorflow as tf
 
 # unet
-from unet_keras import UnetGenerator as Generator
-from unet_keras import Discriminator
+from .unet_keras import UnetGenerator as Generator
+from .unet_keras import Discriminator
 
 # Resnet
 # from resnet_model import ResnetGenerator as Generator

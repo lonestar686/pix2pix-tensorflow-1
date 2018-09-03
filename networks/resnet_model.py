@@ -1,9 +1,9 @@
 """ resnet network """
 import tensorflow as tf
 
-from network_modules import Module, Sequential
-from network_ops import Conv2d, ConvTranspose2d, BatchNorm2d
-from network_ops import Activation, LeakyReLU, Dropout
+from .network_modules import Module, Sequential
+from .network_ops import Conv2d, ConvTranspose2d, BatchNorm2d
+from .network_ops import Activation, LeakyReLU, Dropout
 
 # Defines the generator that consists of Resnet blocks between a few
 # downsampling/upsampling operations.
