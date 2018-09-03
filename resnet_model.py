@@ -1,17 +1,18 @@
+""" resnet network """
+import tensorflow as tf
 
 from network_modules import Module, Sequential
 from network_ops import Conv2d, ConvTranspose2d, BatchNorm2d
 from network_ops import Activation, LeakyReLU, Dropout
-import numpy as np
-
-import tensorflow as tf
 
 # Defines the generator that consists of Resnet blocks between a few
 # downsampling/upsampling operations.
 class ResnetGenerator(Module):
+    """ generator with Resnet """
     def __init__(self, output_nc, ngf=64, use_dropout=False, n_blocks=6):
-        assert(n_blocks >= 0)
+        assert n_blocks >= 0, "number of blocks must be greater than zero"
         super(ResnetGenerator, self).__init__()
+
         self.output_nc = output_nc
         self.ngf = ngf
 
@@ -41,9 +42,10 @@ class ResnetGenerator(Module):
 
         self.model = Sequential(*model)
 
-    def forward(self, input):
+    def forward(self, inputs):
+        """ applying network """
 
-        output = self.model(input)
+        output = self.model(inputs)
 
         # # qc 
         # test_model = tf.keras.models.Model(input, output)
@@ -51,13 +53,14 @@ class ResnetGenerator(Module):
 
         return output
 
-# Define a resnet block
 class ResnetBlock(Module):
+    """ Define a resnet block """
     def __init__(self, dim, use_dropout):
         super(ResnetBlock, self).__init__()
         self.conv_block = self.build_conv_block(dim, use_dropout)
 
     def build_conv_block(self, dim, use_dropout):
+        """ a resnet block """
         conv_block = []
 
         conv_block += [Conv2d(dim, kernel_size=3, stride=1),
@@ -72,14 +75,13 @@ class ResnetBlock(Module):
         return Sequential(*conv_block)
 
     def forward(self, x):
+        """ applying network """
         out = tf.keras.layers.Add()([x, self.conv_block(x)])
         return out
 
-
-# Defines the PatchGAN discriminator.
 class NLayerDiscriminator(Module):
-    def __init__(self, ndf=64, n_layers=3, 
-                       use_sigmoid=True):
+    """ Defines the PatchGAN discriminator. """
+    def __init__(self, ndf=64, n_layers=3, use_sigmoid=True):
         super(NLayerDiscriminator, self).__init__()
 
         kw = 4
@@ -91,15 +93,15 @@ class NLayerDiscriminator(Module):
         for n in range(1, n_layers):
             nf_mult = min(2**n, 8)
             sequence += [
-                Conv2d(ndf * nf_mult, kernel_size=kw, stride=2), 
-                BatchNorm2d(), 
+                Conv2d(ndf * nf_mult, kernel_size=kw, stride=2),
+                BatchNorm2d(),
                 LeakyReLU(0.2)
             ]
 
         nf_mult = min(2**n_layers, 8)
         sequence += [
-            Conv2d(ndf * nf_mult, kernel_size=kw, stride=1), 
-            BatchNorm2d(), 
+            Conv2d(ndf * nf_mult, kernel_size=kw, stride=1),
+            BatchNorm2d(),
             LeakyReLU(0.2)
         ]
 
@@ -110,12 +112,12 @@ class NLayerDiscriminator(Module):
 
         self.model = Sequential(*sequence)
 
-    def forward(self, input):
-        # 
-        output = self.model(input)
+    def forward(self, inputs):
+        """ apply network """
+        output = self.model(inputs)
 
-        # # qc 
-        # test_model = tf.keras.models.Model(input, output)
+        # # qc
+        # test_model = tf.keras.models.Model(inputs, output)
         # test_model.summary()
 
         return output

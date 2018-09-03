@@ -1,15 +1,15 @@
-#
-from collections import OrderedDict, Iterable
+""" base module for composing network """
+
+from collections import OrderedDict
 from itertools import islice
 import operator
 
-#
 class Module:
     r""" Pytorch Module-like base class
          maily defined a function-like interface
     """
-    def __init__(self, name="Base", **kwargs):
-        self.name=name
+    def __init__(self, name="Base", **kwargs): #pylint:disable=W0613
+        self.name = name
         self._modules = OrderedDict()
 
     def forward(self, *inputs):
@@ -46,7 +46,7 @@ class Module:
             1 -> Linear (2 -> 2)
 
         """
-        for name, module in self.named_modules():
+        for _, module in self.named_modules():
             yield module
 
     def named_modules(self, memo=None, prefix=''):
@@ -74,7 +74,6 @@ class Module:
             1 -> ('0', Linear (2 -> 2))
 
         """
-
         if memo is None:
             memo = set()
         if self not in memo:
@@ -134,10 +133,10 @@ class Sequential(Module):
             for idx, module in enumerate(args):
                 self.add_module(str(idx), module)
 
-    def forward(self, input):
+    def forward(self, inputs):
         for module in self._modules.values():
-            input = module(input)
-        return input
+            inputs = module(inputs)
+        return inputs
 
     def _get_item_by_idx(self, iterator, idx):
         """Get the idx-th item of the iterator"""
@@ -185,7 +184,7 @@ class Sequential(Module):
         """
         if not isinstance(module, Module):
             raise TypeError("{} should be a Module class".format(type(module).__name__))
-        
+
         self.add_module(str(len(self)), module)
         return self
 
