@@ -1,11 +1,10 @@
 """ unet implemented with keras """
-import tensorflow as tf
 from tensorflow.keras.layers import Conv2D, Conv2DTranspose
 from tensorflow.keras.layers import BatchNormalization
 from tensorflow.keras.layers import Activation, LeakyReLU
 from tensorflow.keras.layers import Concatenate, Dropout
 
-from .network_modules import Module
+from .network_modules import Module, Sequential
 
 # generator uses unet architecture
 class UnetGenerator(Module):
@@ -23,11 +22,16 @@ class UnetGenerator(Module):
         encoder = self.encoder
         decoder = self.decoder
 
+        # set training/evaluation mode
+        encoder.train(is_training)
+        decoder.train(is_training)
+
+        #
         layers = []
 
         # encoder
         for op in encoder:
-            x = op(x, is_training)
+            x = op(x)
             layers.append(x)
 
         # decoder
@@ -37,16 +41,16 @@ class UnetGenerator(Module):
             # first decoder layer doesn't have skip connections
             # since it is directly connected to the skip_layer
             if decoder_layer == 0:
-                x = op(x, is_training)
+                x = op(x)
             else:
                 x = Concatenate(axis=-1)([x, layers[skip_layer]])
-                x = op(x, is_training)
+                x = op(x)
 
         return x
 
     def _build_encoder(self, ngf, alpha=0.2):
 
-        encoder_network = []
+        encoder_network = Sequential()
 
         # [batch, in_height, in_width, in_channels] => [batch, out_height, out_width, out_channels]
         # encoder_1: [batch, 256, 256, in_channels] => [batch, 128, 128, ngf]
@@ -66,15 +70,15 @@ class UnetGenerator(Module):
         ]
 
         for out_channels in layer_specs:
-            encoder_network += [ 
+            encoder_network += [
                 _UnetEncoderMid(out_channels, alpha)
-             ]
+            ]
 
         return encoder_network
-    
+
     def _build_decoder(self, outputs_channels, ngf):
 
-        decoder_network = []
+        decoder_network = Sequential()
 
         # decoders
         layer_specs = [
@@ -107,7 +111,7 @@ class _UnetEncoderBeg(Module):
         #
         self.conv = Conv2D(ngf, kernel_size=(4, 4), strides=(2, 2), padding='same')
 
-    def forward(self, x, is_training):
+    def forward(self, x):
         x = self.conv(x)
         return x
 
@@ -120,10 +124,10 @@ class _UnetEncoderMid(Module):
         self.conv = Conv2D(out_channels, kernel_size=(4, 4), strides=(2, 2), padding='same')
         self.bn = BatchNormalization()
 
-    def forward(self, x, is_training):
+    def forward(self, x):
         x = self.leaky(x)
         x = self.conv(x)
-        x = self.bn(x, training=is_training)
+        x = self.bn(x, training=self.is_training)
         return x
 
 class _UnetDecoderMid(Module):
@@ -139,27 +143,26 @@ class _UnetDecoderMid(Module):
         if dropout > 0.0:
             self.dropout = Dropout(dropout)
 
-    def forward(self, x, is_training):
+    def forward(self, x):
         x = self.act(x)
         x = self.conv_trans(x)
-        x = self.bn(x, training=is_training)
+        x = self.bn(x, training=self.is_training)
         #
         if self.dropout is not None:
-            x = self.dropout(x, training=is_training)
+            x = self.dropout(x, training=self.is_training)
 
         return x
 
 class _UnetDecoderEnd(Module):
     def __init__(self, out_channels):
         super(_UnetDecoderEnd, self).__init__()
-
-        # 
+        #
         self.act = Activation('relu')
         # [batch, in_height, in_width, in_channels] => [batch, in_height*2, in_width*2, out_channels]
         self.conv_trans = Conv2DTranspose(out_channels, kernel_size=(4, 4), strides=(2, 2), padding='same')
-        self.act =  Activation('tanh')
+        self.act = Activation('tanh')
 
-    def forward(self, x, is_training):   # Note: the flag 'is_training' is only for convenience
+    def forward(self, x):
         x = self.act(x)
         x = self.conv_trans(x)
         x = self.act(x)
@@ -177,15 +180,18 @@ class Discriminator(Module):
 
     def forward(self, x, is_training):
 
-        # apply operators to the data
-        for op in self.network:
-            x = op(x, is_training)
+        # set training/evaluation mode
+        self.network.train(is_training)
+
+        # apply modules to the data
+        for module in self.network:
+            x = module(x)
 
         return x
 
     def _build_network(self, ndf, n_layers):
 
-        network = []
+        network = Sequential()
 
         # layer_1: [batch, 256, 256, in_channels * 2] => [batch, 128, 128, ndf]
         network += [
@@ -199,7 +205,7 @@ class Discriminator(Module):
             out_channels = ndf * min(2**(i+1), 8)
             stride = 1 if i == n_layers - 1 else 2  # last layer here has stride 1
             network += [
-                _DiscriminatorMid(out_channels, stride)     
+                _DiscriminatorMid(out_channels, stride)
             ]
 
         # layer_5: [batch, 31, 31, ndf * 8] => [batch, 30, 30, 1]
@@ -216,7 +222,7 @@ class _DiscriminatorBeg(Module):
         self.conv = Conv2D(out_channels, kernel_size=(4, 4), strides=(2, 2), padding='same')
         self.leaky = LeakyReLU(alpha)     
 
-    def forward(self, x, is_training):
+    def forward(self, x):
         #
         x = self.conv(x)
         x = self.leaky(x)
@@ -229,12 +235,12 @@ class _DiscriminatorMid(Module):
         #
         self.conv = Conv2D(out_channels, kernel_size=(4, 4), strides=(stride, stride), padding='same')
         self.bn = BatchNormalization()
-        self.leaky = LeakyReLU(alpha)     
+        self.leaky = LeakyReLU(alpha)
 
-    def forward(self, x, is_training):
+    def forward(self, x):
         #
         x = self.conv(x)
-        x = self.bn(x, training=is_training)
+        x = self.bn(x, training=self.is_training)
         x = self.leaky(x)
 
         return x
@@ -246,7 +252,7 @@ class _DiscriminatorEnd(Module):
         self.conv = Conv2D(out_channels, kernel_size=(4, 4), strides=(1, 1), padding='same')
         self.act = Activation('sigmoid')
 
-    def forward(self, x, is_training):   # Note: the flag 'is_training' is only for convenience
+    def forward(self, x):
         x = self.conv(x)
         x = self.act(x)
 

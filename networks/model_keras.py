@@ -30,13 +30,12 @@ class pix2pix:
     """ to build pix2pix model
     """
     def __init__(self, a, outputs_channels):
-        self.a  = a
+        self.a = a
 
         # create a discriminator for sharing
         self.discriminator = Discriminator(self.a.ndf)
         # create generator
         self.generator = Generator(outputs_channels, self.a.ngf)
-
 
     def create_generator(self, inputs, is_training):
         """ function to create a generator
@@ -63,7 +62,7 @@ class pix2pix:
             #
             inputs_discriminator = tf.keras.layers.Input(tensor=inputs_targets)
             # apply the network
-            predict = self.discriminator(inputs_discriminator, is_training=True)
+            predict = self.discriminator(inputs_discriminator, is_training=is_training)
 
         return predict
 
