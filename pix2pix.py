@@ -251,8 +251,6 @@ def main(argv):
     with tf.name_scope("parameter_count"):
         parameter_count = tf.reduce_sum([tf.reduce_prod(tf.shape(v)) for v in tf.trainable_variables()])
 
-
-
     # compute max_steps
     max_steps = 2**32
     if a.max_epochs is not None:
@@ -260,18 +258,19 @@ def main(argv):
     if a.max_steps is not None:
         max_steps = a.max_steps
 
-    #
+    # to save checkpoint
     saver = tf.train.Saver(max_to_keep=1)
 
-    # 
+    # log directory
     logdir = a.output_dir if (a.trace_freq > 0 or a.summary_freq > 0) else None
 
     # use differnt hooks for training and testing
     if a.mode == "test":
         hooks = None
-    else: 
+    else:
         # hooks for tf.train.MonitoredTrainingSession
-        from networks.custom_hooks import TraceHook, DisplayHook
+        from networks.custom_hooks import TraceHook, DisplayHook, LoggingTensorHook
+
         #
         train_hooks = [tf.train.StopAtStepHook(last_step=max_steps),]
         if a.checkpoint:
@@ -289,10 +288,12 @@ def main(argv):
             ))
 
         if a.progress_freq:
-            train_hooks.append(tf.train.LoggingTensorHook(
+            train_hooks.append(LoggingTensorHook(
                 tensors={"discrim_loss": model.discrim_loss,
                          "gen_loss_GAN": model.gen_loss_GAN,
                          "gen_loss_L1": model.gen_loss_L1},
+                batch_size=a.batch_size, max_steps=max_steps,
+                steps_per_epoch=examples.steps_per_epoch,
                 every_n_iter=a.progress_freq,
             ))
 
@@ -350,6 +351,5 @@ def main(argv):
                 results = sess.run(fetches)
 
 if __name__ == '__main__':
-    #
-    tf.logging.set_verbosity(tf.logging.INFO)
+    # run the main function
     tf.app.run(main)
