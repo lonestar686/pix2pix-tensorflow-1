@@ -1,6 +1,6 @@
 """ general network operators """
 from .network_wrapper_keras import *
-from .network_modules import Module, Sequential
+from .network_modules import Module
 
 # wrap common network operations into module wrappers
 class Conv2d(Module):
@@ -30,8 +30,8 @@ class BatchNorm2d(Module):
     def __init__(self):
         self.batchnorm = batchnorm()
 
-    def forward(self, x, is_training):
-        x = self.batchnorm(x, training=is_training)
+    def forward(self, x):
+        x = self.batchnorm(x, training=self.is_training)
         return x
 
 class Activation(Module):
@@ -60,8 +60,8 @@ class Dropout(Module):
     def __init__(self, dropout_rate):
         self.dropout = dropout(dropout_rate)
 
-    def forward(self, x, is_training):
-        x = self.dropout(x, training=is_training)
+    def forward(self, x):
+        x = self.dropout(x, training=self.is_training)
         return x
 
 class Concat(Module):

@@ -1,8 +1,19 @@
-""" base module for composing network """
+""" base module for composing network, borrowed heavily from pytorch """
 
 from collections import OrderedDict
 from itertools import islice
 import operator
+
+def _addindent(s_, numSpaces):
+    s = s_.split('\n')
+    # don't do anything for single-line stuff
+    if len(s) == 1:
+        return s_
+    first = s.pop(0)
+    s = [(numSpaces * ' ') + line for line in s]
+    s = '\n'.join(s)
+    s = first + '\n' + s
+    return s
 
 class Module:
     r""" Pytorch Module-like base class
@@ -11,6 +22,7 @@ class Module:
     def __init__(self, name="Base", **kwargs): #pylint:disable=W0613
         self.name = name
         self._modules = OrderedDict()
+        self.is_training = True
 
     def forward(self, *inputs):
         r""" Defines the computation performed at every call. 
@@ -21,6 +33,33 @@ class Module:
     def __call__(self, *inputs, **kwargs):
         result = self.forward(*inputs, **kwargs)
         return result
+
+    def children(self):
+        """Returns an iterator over immediate children modules.
+
+        Yields:
+            Module: a child module
+        """
+        for _, module in self.named_children():
+            yield module
+
+    def named_children(self):
+        """Returns an iterator over immediate children modules, yielding both
+        the name of the module as well as the module itself.
+
+        Yields:
+            (string, Module): Tuple containing a name and child module
+
+        Example:
+            >>> for name, module in model.named_children():
+            >>>     if name in ['conv4', 'conv5']:
+            >>>         print(module)
+        """
+        memo = set()
+        for name, module in self._modules.items():
+            if module is not None and module not in memo:
+                memo.add(module)
+                yield name, module
 
     def modules(self):
         r"""Returns an iterator over all modules in the network.
@@ -100,6 +139,35 @@ class Module:
             raise TypeError("{} is not a Module subclass".format(type(module)))
 
         self._modules[name] = module
+
+    def train(self, mode=True):
+        """Sets the module in training mode.
+
+        This has any effect only on modules such as Dropout or BatchNorm.
+
+        Returns:
+            Module: self
+        """
+        self.is_training = mode
+        for module in self.children():
+            module.train(mode)
+        return self
+
+    def eval(self):
+        """Sets the module in evaluation mode.
+
+        This has any effect only on modules such as Dropout or BatchNorm.
+        """
+        return self.train(False)
+
+    def __repr__(self):
+        tmpstr = self.__class__.__name__ + '(\n'
+        for key, module in self._modules.items():
+            modstr = module.__repr__()
+            modstr = _addindent(modstr, 2)
+            tmpstr = tmpstr + '  (' + key + '): ' + modstr + '\n'
+        tmpstr = tmpstr + ')'
+        return tmpstr
 
 class Sequential(Module):
     r"""A sequential container.
